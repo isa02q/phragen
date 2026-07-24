@@ -1,0 +1,22 @@
+#:schema https://mise.en.dev/schema/mise.json
+
+[tools]
+zig = "0.16.0"
+
+[tasks.build]
+description = "Build"
+run = "zig build --summary all"
+
+[tasks."build:full"]
+description = "Full rebuild"
+run = [
+  "rm --recursive --force ./.zig-cache/",
+  "zig build --summary all -fno-incremental"
+]
+
+[tasks."build:report"]
+description = "Full rebuild and generate compilation time report"
+run = [
+  "rm --recursive --force ./.zig-cache/",
+  "zig build --summary all -fno-incremental --webui=[::1]:3333 --time-report"
+]

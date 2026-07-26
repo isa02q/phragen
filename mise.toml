@@ -20,3 +20,10 @@ run = [
   "rm --recursive --force ./.zig-cache/",
   "zig build --summary all -fno-incremental --webui=[::1]:3333 --time-report"
 ]
+
+[tasks.test]
+description = "Run tests by building a test executable"
+usage = '''
+arg "[filter]" help="Filter tests to run"
+'''
+run = "zig build test --summary all -- ${filter}"

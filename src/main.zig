@@ -1,7 +1,11 @@
 const std = @import("std");
+const parg = @import("parg");
 const words = @import("words.zig").words;
 
 pub fn main(init: std.process.Init) !void {
+    const arena = init.arena.allocator();
+    const opt = try parseArgs(init.minimal.args, arena);
+
     var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
     defer _ = debug_allocator.deinit();
     const allocator = debug_allocator.allocator();
@@ -9,7 +13,7 @@ pub fn main(init: std.process.Init) !void {
     const rng_impl: std.Random.IoSource = .{ .io = init.io };
     const rng = rng_impl.interface();
 
-    const passphrase = try generatePassphrase(allocator, rng, .{});
+    const passphrase = try generatePassphrase(allocator, rng, opt);
     defer allocator.free(passphrase);
 
     const buffer = try allocator.alloc(u8, passphrase.len + 1);
@@ -20,6 +24,41 @@ pub fn main(init: std.process.Init) !void {
     try stdout.print("{s}\n", .{passphrase});
     try stdout.flush();
 }
+
+fn parseArgs(args: std.process.Args, allocator: std.mem.Allocator) ParseArgsError!GenerationOptions {
+    const slice = try std.process.Args.toSlice(args, allocator);
+    defer allocator.free(slice);
+
+    var p = parg.parseSlice(slice, .{});
+    defer p.deinit();
+
+    // `std.process.Args` holds program name as the first entry.
+    const program_name = p.next() orelse unreachable;
+    _ = program_name;
+
+    var opt = GenerationOptions{};
+
+    while (p.next()) |token| {
+        switch (token) {
+            .flag => |flag| {
+                if (flag.isLong("words") or flag.isShort("w")) {
+                    const word_count_str = p.nextValue() orelse return ParseArgsError.MissingValue;
+                    opt.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
+                } else if (flag.isLong("separator") or flag.isShort("s")) {
+                    opt.separator = p.nextValue() orelse return ParseArgsError.MissingValue;
+                } else {
+                    return ParseArgsError.InvalidOption;
+                }
+            },
+            .arg => return ParseArgsError.UnexpectedArgument,
+            .unexpected_value => return ParseArgsError.UnexpectedValue,
+        }
+    }
+
+    return opt;
+}
+
+const ParseArgsError = error{ MissingValue, InvalidValue, InvalidOption, UnexpectedValue, UnexpectedArgument } || std.process.Args.ToSliceError;
 
 fn generatePassphrase(allocator: std.mem.Allocator, rng: std.Random, opt: GenerationOptions) ![]u8 {
     try opt.validate();

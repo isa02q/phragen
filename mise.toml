@@ -26,4 +26,4 @@ description = "Run tests by building a test executable"
 usage = '''
 arg "[filter]" help="Filter tests to run"
 '''
-run = "zig build test --summary all -- ${filter}"
+run = "zig build test --summary all -- ${usage_filter}"

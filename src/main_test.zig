@@ -11,7 +11,6 @@ const Prng = std.Random.DefaultPrng;
 const allocator = std.testing.allocator;
 const expectEqual = std.testing.expectEqual;
 const expectError = std.testing.expectError;
-const expectEqualStrings = std.testing.expectEqualStrings;
 
 test "parseArgs(): valid args are parsed correctly" {
     const cases = [_]struct {
@@ -20,10 +19,10 @@ test "parseArgs(): valid args are parsed correctly" {
     }{
         .{ .cmd = &.{ "phragen", "--words", "20" }, .expected = .{ .word_count = 20 } },
         .{ .cmd = &.{ "phragen", "-w", "4" }, .expected = .{ .word_count = 4 } },
-        .{ .cmd = &.{ "phragen", "--separator", "-" }, .expected = .{ .separator = "-" } },
-        .{ .cmd = &.{ "phragen", "-s", "!" }, .expected = .{ .separator = "!" } },
-        .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .word_count = 12, .separator = "^" } },
-        .{ .cmd = &.{ "phragen", "-s", "%", "-w", "8" }, .expected = .{ .word_count = 8, .separator = "%" } },
+        .{ .cmd = &.{ "phragen", "--separator", "-" }, .expected = .{ .separator = '-' } },
+        .{ .cmd = &.{ "phragen", "-s", "!" }, .expected = .{ .separator = '!' } },
+        .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .word_count = 12, .separator = '^' } },
+        .{ .cmd = &.{ "phragen", "-s", "%", "-w", "8" }, .expected = .{ .word_count = 8, .separator = '%' } },
     };
 
     for (cases) |case| {
@@ -31,7 +30,7 @@ test "parseArgs(): valid args are parsed correctly" {
         const opt = try phragen.parseArgs(args, allocator);
 
         try expectEqual(case.expected.word_count, opt.word_count);
-        try expectEqualStrings(case.expected.separator, opt.separator);
+        try expectEqual(case.expected.separator, opt.separator);
     }
 }
 
@@ -43,6 +42,7 @@ test "parseArgs(): fails with expected error when invalid args passed" {
         .{ .cmd = &.{ "phragen", "--separator" }, .expectedError = ParseArgsError.MissingValue },
         .{ .cmd = &.{ "phragen", "-w" }, .expectedError = ParseArgsError.MissingValue },
         .{ .cmd = &.{ "phragen", "-w", "!" }, .expectedError = ParseArgsError.InvalidValue },
+        .{ .cmd = &.{ "phragen", "-s", "??" }, .expectedError = ParseArgsError.InvalidValue },
         .{ .cmd = &.{ "phragen", "--word", "5" }, .expectedError = ParseArgsError.InvalidOption },
         .{ .cmd = &.{ "phragen", "--happy" }, .expectedError = ParseArgsError.InvalidOption },
         .{ .cmd = &.{ "phragen", "hello" }, .expectedError = ParseArgsError.UnexpectedArgument },
@@ -62,13 +62,13 @@ test "generatePassphrase(): generated passphrase respects options" {
 
     const opt: GenerationOptions = .{
         .word_count = 4, // threshold
-        .separator = " ",
+        .separator = ' ',
     };
 
     const result = try phragen.generatePassphrase(allocator, random, opt);
     defer allocator.free(result);
 
-    var it = std.mem.splitSequence(u8, result, opt.separator);
+    var it = std.mem.splitScalar(u8, result, opt.separator);
     var count: usize = 0;
     while (it.next()) |_| count += 1;
     try expectEqual(@as(usize, opt.word_count), count);
@@ -81,8 +81,8 @@ test "generatePassphrase(): fails with expected error when invalid options passe
     }{
         .{ .opt = .{ .word_count = 3 }, .expectedError = GeneratePassphraseError.WordCountBelowMinimal },
         .{ .opt = .{ .word_count = 0 }, .expectedError = GeneratePassphraseError.WordCountBelowMinimal },
-        .{ .opt = .{ .separator = "\\" }, .expectedError = GeneratePassphraseError.SeparatorContainsDisallowedCharacter },
-        .{ .opt = .{ .separator = "`" }, .expectedError = GeneratePassphraseError.SeparatorContainsDisallowedCharacter },
+        .{ .opt = .{ .separator = '\\' }, .expectedError = GeneratePassphraseError.SeparatorIsDisallowedCharacter },
+        .{ .opt = .{ .separator = '`' }, .expectedError = GeneratePassphraseError.SeparatorIsDisallowedCharacter },
     };
 
     var prng = Prng.init(0);

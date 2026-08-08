@@ -45,7 +45,9 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!GenerationOpti
                     const word_count_str = p.nextValue() orelse return ParseArgsError.MissingValue;
                     opt.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
                 } else if (flag.isLong("separator") or flag.isShort("s")) {
-                    opt.separator = p.nextValue() orelse return ParseArgsError.MissingValue;
+                    const separator_str = p.nextValue() orelse return ParseArgsError.MissingValue;
+                    if (separator_str.len != 1) return ParseArgsError.InvalidValue;
+                    opt.separator = separator_str[0];
                 } else {
                     return ParseArgsError.InvalidOption;
                 }
@@ -71,7 +73,7 @@ pub fn generatePassphrase(allocator: Allocator, rng: std.Random, opt: Generation
     try list.appendSlice(allocator, words[firstword_index]);
 
     for (1..opt.word_count) |_| {
-        try list.appendSlice(allocator, opt.separator);
+        try list.append(allocator, opt.separator);
         const index = rng.uintLessThan(usize, words.len);
         try list.appendSlice(allocator, words[index]);
     }
@@ -83,26 +85,24 @@ pub const GeneratePassphraseError = GenerationOptions.Error || Allocator.Error;
 
 pub const GenerationOptions = struct {
     word_count: usize = 6,
-    separator: []const u8 = ",",
+    separator: u8 = ',',
 
     fn validate(self: GenerationOptions) Error!void {
         if (self.word_count < min_word_count) {
             return Error.WordCountBelowMinimal;
         }
-        for (self.separator) |char| {
-            if (!isAllowedSeparatorSymbol(char)) {
-                return Error.SeparatorContainsDisallowedCharacter;
-            }
+        if (!isAllowedSeparatorCharacter(self.separator)) {
+            return Error.SeparatorIsDisallowedCharacter;
         }
     }
 
-    const Error = error{ WordCountBelowMinimal, SeparatorContainsDisallowedCharacter };
+    const Error = error{ WordCountBelowMinimal, SeparatorIsDisallowedCharacter };
 };
 
 const min_word_count = 4;
-fn isAllowedSeparatorSymbol(c: u8) bool {
+fn isAllowedSeparatorCharacter(c: u8) bool {
     return switch (c) {
-        '0'...'9', 'A'...'Z', 'a'...'z', '-', '=', '_', '.', ',', ' ', '/', ':', ';', '+', '~', '*', '#', '!', '?', '@' => true,
+        '0'...'9', '-', '=', '_', '.', ',', ' ', '/', ':', ';', '+', '~', '*', '#', '!', '?', '@', '$', '%', '&' => true,
         else => false,
     };
 }

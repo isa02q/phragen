@@ -35,6 +35,7 @@ pub fn build(b: *std.Build) void {
         }),
         .filters = if (b.args) |args| args else &.{},
     });
+    test_exe.root_module.addImport("parg", parg_module);
 
     const run_tests = b.addRunArtifact(test_exe);
     test_step.dependOn(&run_tests.step);

@@ -1,11 +1,16 @@
 const std = @import("std");
+const manifest = @import("build.zig.zon");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const phragen_version: std.SemanticVersion = try .parse(manifest.version);
 
     const parg = b.dependency("parg", .{});
     const parg_module = parg.module("parg");
+
+    const options = b.addOptions();
+    options.addOption(std.SemanticVersion, "version", phragen_version);
 
     const exe = b.addExecutable(.{
         .name = "phragen",
@@ -14,8 +19,10 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         }),
+        .version = phragen_version,
     });
     exe.root_module.addImport("parg", parg_module);
+    exe.root_module.addImport("build_options", options.createModule());
 
     b.installArtifact(exe);
 

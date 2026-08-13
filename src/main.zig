@@ -1,5 +1,6 @@
 const std = @import("std");
 const parg = @import("parg");
+const build_options = @import("build_options");
 
 const words = @import("words.zig").words;
 
@@ -9,9 +10,17 @@ const Args = std.process.Args;
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const allocator = init.arena.allocator();
-
     const rng_impl: std.Random.IoSource = .{ .io = io };
     const rng = rng_impl.interface();
+
+    for (init.minimal.args.vector[1..]) |arg| {
+        const arg_str = std.mem.span(arg);
+        if (std.mem.eql(u8, arg_str, "--version") or std.mem.eql(u8, arg_str, "-v")) {
+            const version = std.fmt.comptimePrint("{f}\n", .{build_options.version});
+            try std.Io.File.stdout().writeStreamingAll(io, version);
+            std.process.exit(0);
+        }
+    }
 
     const opt = try parseArgs(init.minimal.args, allocator);
 
@@ -20,7 +29,6 @@ pub fn main(init: std.process.Init) !void {
     const buffer = try allocator.alloc(u8, passphrase.len + 1);
     var stdout_writer = std.Io.File.stdout().writer(io, buffer);
     const stdout = &stdout_writer.interface;
-
     try stdout.print("{s}\n", .{passphrase});
     try stdout.flush();
 }

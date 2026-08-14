@@ -74,9 +74,19 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!GenerationOpti
     return opt;
 }
 
-pub const ParseArgsError = error{ MissingValue, InvalidValue, InvalidOption, UnexpectedValue, UnexpectedArgument } || Args.ToSliceError;
+pub const ParseArgsError = error{
+    MissingValue,
+    InvalidValue,
+    InvalidOption,
+    UnexpectedValue,
+    UnexpectedArgument,
+} || Args.ToSliceError;
 
-pub fn generatePassphrases(allocator: Allocator, rng: std.Random, opt: GenerationOptions) Allocator.Error![][]u8 {
+pub fn generatePassphrases(
+    allocator: Allocator,
+    rng: std.Random,
+    opt: GenerationOptions,
+) Allocator.Error![][]u8 {
     var passphrases: std.ArrayList([]u8) = .empty;
     errdefer {
         for (passphrases.items) |item| allocator.free(item);
@@ -91,7 +101,11 @@ pub fn generatePassphrases(allocator: Allocator, rng: std.Random, opt: Generatio
     return passphrases.toOwnedSlice(allocator);
 }
 
-fn generateSinglePassphrase(allocator: Allocator, rng: std.Random, opt: GenerationOptions) Allocator.Error![]u8 {
+fn generateSinglePassphrase(
+    allocator: Allocator,
+    rng: std.Random,
+    opt: GenerationOptions,
+) Allocator.Error![]u8 {
     var list: std.ArrayList(u8) = .empty;
     errdefer list.deinit(allocator);
 
@@ -125,7 +139,11 @@ pub const GenerationOptions = struct {
         }
     }
 
-    pub const Error = error{ PassphraseCountBelowMinimal, WordCountBelowMinimal, SeparatorIsDisallowedCharacter };
+    pub const Error = error{
+        PassphraseCountBelowMinimal,
+        WordCountBelowMinimal,
+        SeparatorIsDisallowedCharacter,
+    };
 };
 
 const min_word_count = 4;

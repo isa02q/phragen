@@ -13,9 +13,14 @@ pub fn main(init: std.process.Init) !void {
     const rng_impl: std.Random.IoSource = .{ .io = io };
     const rng = rng_impl.interface();
 
-    for (init.minimal.args.vector[1..]) |arg| {
-        const arg_str = std.mem.span(arg);
-        if (std.mem.eql(u8, arg_str, "--version") or std.mem.eql(u8, arg_str, "-v")) {
+    var args = try Args.iterateAllocator(init.minimal.args, allocator);
+    defer args.deinit();
+
+    // `std.process.Args` holds program name as the first entry.
+    _ = args.next();
+
+    while (args.next()) |arg| {
+        if (std.mem.eql(u8, arg, "--version") or std.mem.eql(u8, arg, "-v")) {
             const version = std.fmt.comptimePrint("{f}\n", .{build_options.version});
             try std.Io.File.stdout().writeStreamingAll(io, version);
             std.process.exit(0);

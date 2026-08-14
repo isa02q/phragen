@@ -46,4 +46,39 @@ pub fn build(b: *std.Build) !void {
 
     const run_tests = b.addRunArtifact(test_exe);
     test_step.dependOn(&run_tests.step);
+
+    const release_step = b.step("release", "Build the release binary");
+
+    const target_all = b.option(bool, "target-all", "Build for all supported targets") orelse false;
+    const targets: []const std.Target.Query =
+        if (target_all) release_targets else &.{target.query};
+
+    for (targets) |t| {
+        const release_exe = b.addExecutable(.{
+            .name = "phragen",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main.zig"),
+                .target = b.resolveTargetQuery(t),
+                .optimize = .ReleaseSafe,
+            }),
+            .version = phragen_version,
+        });
+        release_exe.root_module.addImport("parg", parg_module);
+        release_exe.root_module.addImport("build_options", options.createModule());
+
+        const release_output = b.addInstallArtifact(release_exe, .{ .dest_dir = .{ .override = .{
+            .custom = try t.zigTriple(b.allocator),
+        } } });
+
+        release_step.dependOn(&release_output.step);
+    }
 }
+
+const release_targets: []const std.Target.Query = &.{
+    .{ .cpu_arch = .aarch64, .os_tag = .linux, .abi = .gnu },
+    .{ .cpu_arch = .aarch64, .os_tag = .macos },
+    .{ .cpu_arch = .aarch64, .os_tag = .windows },
+    .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
+    .{ .cpu_arch = .x86_64, .os_tag = .macos },
+    .{ .cpu_arch = .x86_64, .os_tag = .windows },
+};

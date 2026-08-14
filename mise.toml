@@ -21,6 +21,14 @@ run = [
   "zig build --summary all -fno-incremental --webui=[::1]:3333 --time-report"
 ]
 
+[tasks."build:release"]
+description = "Build the release binary for your platform"
+run = "zig build release --summary all"
+
+[tasks."build:release-all"]
+description = "Build release binaries for all supported platform"
+run = "zig build release -Dtarget-all=true --summary all"
+
 [tasks.test]
 description = "Run tests by building a test executable"
 usage = '''

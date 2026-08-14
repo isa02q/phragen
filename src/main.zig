@@ -23,13 +23,16 @@ pub fn main(init: std.process.Init) !void {
     }
 
     const opt = try parseArgs(init.minimal.args, allocator);
+    try opt.validate();
 
-    const passphrase = try generatePassphrase(allocator, rng, opt);
+    const passphrases = try generatePassphrases(allocator, rng, opt);
 
-    const buffer = try allocator.alloc(u8, passphrase.len + 1);
+    const buffer = try allocator.alloc(u8, opt.word_count * 10 * opt.passphrase_count);
     var stdout_writer = std.Io.File.stdout().writer(io, buffer);
     const stdout = &stdout_writer.interface;
-    try stdout.print("{s}\n", .{passphrase});
+    for (passphrases) |passphrase| {
+        try stdout.print("{s}\n", .{passphrase});
+    }
     try stdout.flush();
 }
 
@@ -49,7 +52,10 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!GenerationOpti
     while (p.next()) |token| {
         switch (token) {
             .flag => |flag| {
-                if (flag.isLong("words") or flag.isShort("w")) {
+                if (flag.isLong("count") or flag.isShort("c")) {
+                    const passphrase_count_str = p.nextValue() orelse return ParseArgsError.MissingValue;
+                    opt.passphrase_count = std.fmt.parseInt(usize, passphrase_count_str, 10) catch return ParseArgsError.InvalidValue;
+                } else if (flag.isLong("words") or flag.isShort("w")) {
                     const word_count_str = p.nextValue() orelse return ParseArgsError.MissingValue;
                     opt.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
                 } else if (flag.isLong("separator") or flag.isShort("s")) {
@@ -70,9 +76,22 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!GenerationOpti
 
 pub const ParseArgsError = error{ MissingValue, InvalidValue, InvalidOption, UnexpectedValue, UnexpectedArgument } || Args.ToSliceError;
 
-pub fn generatePassphrase(allocator: Allocator, rng: std.Random, opt: GenerationOptions) GeneratePassphraseError![]u8 {
-    try opt.validate();
+pub fn generatePassphrases(allocator: Allocator, rng: std.Random, opt: GenerationOptions) Allocator.Error![][]u8 {
+    var passphrases: std.ArrayList([]u8) = .empty;
+    errdefer {
+        for (passphrases.items) |item| allocator.free(item);
+        passphrases.deinit(allocator);
+    }
 
+    for (0..opt.passphrase_count) |_| {
+        const passphrase = try generateSinglePassphrase(allocator, rng, opt);
+        try passphrases.append(allocator, passphrase);
+    }
+
+    return passphrases.toOwnedSlice(allocator);
+}
+
+fn generateSinglePassphrase(allocator: Allocator, rng: std.Random, opt: GenerationOptions) Allocator.Error![]u8 {
     var list: std.ArrayList(u8) = .empty;
     errdefer list.deinit(allocator);
 
@@ -89,13 +108,15 @@ pub fn generatePassphrase(allocator: Allocator, rng: std.Random, opt: Generation
     return list.toOwnedSlice(allocator);
 }
 
-pub const GeneratePassphraseError = GenerationOptions.Error || Allocator.Error;
-
 pub const GenerationOptions = struct {
+    passphrase_count: usize = 1,
     word_count: usize = 6,
     separator: u8 = ',',
 
-    fn validate(self: GenerationOptions) Error!void {
+    pub fn validate(self: GenerationOptions) Error!void {
+        if (self.passphrase_count < 1) {
+            return Error.PassphraseCountBelowMinimal;
+        }
         if (self.word_count < min_word_count) {
             return Error.WordCountBelowMinimal;
         }
@@ -104,7 +125,7 @@ pub const GenerationOptions = struct {
         }
     }
 
-    const Error = error{ WordCountBelowMinimal, SeparatorIsDisallowedCharacter };
+    pub const Error = error{ PassphraseCountBelowMinimal, WordCountBelowMinimal, SeparatorIsDisallowedCharacter };
 };
 
 const min_word_count = 4;

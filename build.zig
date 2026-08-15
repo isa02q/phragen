@@ -54,8 +54,9 @@ pub fn build(b: *std.Build) !void {
         if (target_all) release_targets else &.{target.query};
 
     for (targets) |t| {
+        const release_exe_name = try std.fmt.allocPrint(b.allocator, "phragen-{s}", .{try t.zigTriple(b.allocator)});
         const release_exe = b.addExecutable(.{
-            .name = "phragen",
+            .name = release_exe_name,
             .root_module = b.createModule(.{
                 .root_source_file = b.path("src/main.zig"),
                 .target = b.resolveTargetQuery(t),
@@ -66,9 +67,13 @@ pub fn build(b: *std.Build) !void {
         release_exe.root_module.addImport("parg", parg_module);
         release_exe.root_module.addImport("build_options", options.createModule());
 
-        const release_output = b.addInstallArtifact(release_exe, .{ .dest_dir = .{ .override = .{
-            .custom = try t.zigTriple(b.allocator),
-        } } });
+        const release_output = b.addInstallArtifact(release_exe, .{
+            .dest_dir = .{
+                .override = .{
+                    .custom = "release",
+                },
+            },
+        });
 
         release_step.dependOn(&release_output.step);
     }

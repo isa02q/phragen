@@ -6,9 +6,6 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const phragen_version: std.SemanticVersion = try .parse(manifest.version);
 
-    const parg = b.dependency("parg", .{});
-    const parg_module = parg.module("parg");
-
     const options = b.addOptions();
     options.addOption(std.SemanticVersion, "version", phragen_version);
 
@@ -21,7 +18,6 @@ pub fn build(b: *std.Build) !void {
         }),
         .version = phragen_version,
     });
-    exe.root_module.addImport("parg", parg_module);
     exe.root_module.addImport("build_options", options.createModule());
 
     b.installArtifact(exe);
@@ -42,7 +38,6 @@ pub fn build(b: *std.Build) !void {
         }),
         .filters = if (b.args) |args| args else &.{},
     });
-    test_exe.root_module.addImport("parg", parg_module);
 
     const run_tests = b.addRunArtifact(test_exe);
     test_step.dependOn(&run_tests.step);
@@ -64,7 +59,6 @@ pub fn build(b: *std.Build) !void {
             }),
             .version = phragen_version,
         });
-        release_exe.root_module.addImport("parg", parg_module);
         release_exe.root_module.addImport("build_options", options.createModule());
 
         const release_output = b.addInstallArtifact(release_exe, .{

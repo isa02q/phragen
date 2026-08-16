@@ -1,5 +1,4 @@
 const std = @import("std");
-const parg = @import("parg");
 const build_options = @import("build_options");
 
 const words = @import("words.zig").words;
@@ -13,13 +12,13 @@ pub fn main(init: std.process.Init) !void {
     const rng_impl: std.Random.IoSource = .{ .io = io };
     const rng = rng_impl.interface();
 
-    var args = try Args.iterateAllocator(init.minimal.args, allocator);
-    defer args.deinit();
+    var args_it = try Args.iterateAllocator(init.minimal.args, allocator);
+    defer args_it.deinit();
 
     // `std.process.Args` holds program name as the first entry.
-    _ = args.next();
+    _ = args_it.next();
 
-    while (args.next()) |arg| {
+    while (args_it.next()) |arg| {
         if (std.mem.eql(u8, arg, "--version") or std.mem.eql(u8, arg, "-v")) {
             const version = std.fmt.comptimePrint("{f}\n", .{build_options.version});
             try std.Io.File.stdout().writeStreamingAll(io, version);
@@ -42,37 +41,29 @@ pub fn main(init: std.process.Init) !void {
 }
 
 pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!GenerationOptions {
-    const slice = try Args.toSlice(args, allocator);
-    defer allocator.free(slice);
+    var args_it = try Args.iterateAllocator(args, allocator);
+    defer args_it.deinit();
 
-    var p = parg.parseSlice(slice, .{});
-    defer p.deinit();
-
-    // `std.process.Args` holds program name as the first entry.
-    const program_name = p.next() orelse unreachable;
-    _ = program_name;
+    _ = args_it.next();
 
     var opt = GenerationOptions{};
 
-    while (p.next()) |token| {
-        switch (token) {
-            .flag => |flag| {
-                if (flag.isLong("count") or flag.isShort("c")) {
-                    const passphrase_count_str = p.nextValue() orelse return ParseArgsError.MissingValue;
-                    opt.passphrase_count = std.fmt.parseInt(usize, passphrase_count_str, 10) catch return ParseArgsError.InvalidValue;
-                } else if (flag.isLong("words") or flag.isShort("w")) {
-                    const word_count_str = p.nextValue() orelse return ParseArgsError.MissingValue;
-                    opt.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
-                } else if (flag.isLong("separator") or flag.isShort("s")) {
-                    const separator_str = p.nextValue() orelse return ParseArgsError.MissingValue;
-                    if (separator_str.len != 1) return ParseArgsError.InvalidValue;
-                    opt.separator = separator_str[0];
-                } else {
-                    return ParseArgsError.InvalidOption;
-                }
-            },
-            .arg => return ParseArgsError.UnexpectedArgument,
-            .unexpected_value => return ParseArgsError.UnexpectedValue,
+    const memeq = std.mem.eql;
+    while (args_it.next()) |arg| {
+        if (memeq(u8, arg, "--count") or memeq(u8, arg, "-c")) {
+            const passphrase_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            opt.passphrase_count = std.fmt.parseInt(usize, passphrase_count_str, 10) catch return ParseArgsError.InvalidValue;
+        } else if (memeq(u8, arg, "--words") or memeq(u8, arg, "-w")) {
+            const word_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            opt.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
+        } else if (memeq(u8, arg, "--separator") or memeq(u8, arg, "-s")) {
+            const separator = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (separator.len != 1) return ParseArgsError.InvalidValue;
+            opt.separator = separator[0];
+        } else if (std.mem.startsWith(u8, arg, "-")) {
+            return ParseArgsError.InvalidOption;
+        } else {
+            return ParseArgsError.UnexpectedArgument;
         }
     }
 
@@ -83,7 +74,6 @@ pub const ParseArgsError = error{
     MissingValue,
     InvalidValue,
     InvalidOption,
-    UnexpectedValue,
     UnexpectedArgument,
 } || Args.ToSliceError;
 

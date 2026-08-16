@@ -3,11 +3,5 @@
     .version = "0.0.0",
     .fingerprint = 0x6a33afb3fd10fe61, // Changing this has security and trust implications.
     .minimum_zig_version = "0.16.0",
-    .dependencies = .{
-        .parg = .{
-            .url = "git+https://github.com/judofyr/parg.git#8c4af60afdb3ad211ad12cd329c2859f8593af19",
-            .hash = "parg-0.0.0-dOPWZENZAAAAyp9Lz-4zKPZ8PD7DEwUCEsiw6Y1UR_bA",
-        },
-    },
-    .paths = .{ "build.zig", "build.zig.zon", "src", "zig-pkg" },
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
 }

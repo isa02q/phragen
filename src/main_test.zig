@@ -1,6 +1,7 @@
 const std = @import("std");
 const phragen = @import("main.zig");
 
+const CliArgs = phragen.CliArgs;
 const ParseArgsError = phragen.ParseArgsError;
 const GenerationOptions = phragen.GenerationOptions;
 const GeneratePassphraseError = phragen.GeneratePassphraseError;
@@ -15,24 +16,26 @@ const expectError = std.testing.expectError;
 test "parseArgs(): valid args are parsed correctly" {
     const cases = [_]struct {
         cmd: []const [*:0]const u8,
-        expected: GenerationOptions,
+        expected: CliArgs,
     }{
-        .{ .cmd = &.{ "phragen", "-c", "5" }, .expected = .{ .passphrase_count = 5 } },
-        .{ .cmd = &.{ "phragen", "--count", "10" }, .expected = .{ .passphrase_count = 5 } },
-        .{ .cmd = &.{ "phragen", "--words", "20" }, .expected = .{ .word_count = 20 } },
-        .{ .cmd = &.{ "phragen", "-w", "4" }, .expected = .{ .word_count = 4 } },
-        .{ .cmd = &.{ "phragen", "--separator", "-" }, .expected = .{ .separator = '-' } },
-        .{ .cmd = &.{ "phragen", "-s", "!" }, .expected = .{ .separator = '!' } },
-        .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .word_count = 12, .separator = '^' } },
-        .{ .cmd = &.{ "phragen", "-s", "%", "-w", "8" }, .expected = .{ .word_count = 8, .separator = '%' } },
+        .{ .cmd = &.{ "phragen", "--version" }, .expected = .{ .version = true } },
+        .{ .cmd = &.{ "phragen", "-v", "--count", "2" }, .expected = .{ .version = true } },
+        .{ .cmd = &.{ "phragen", "-c", "5" }, .expected = .{ .version = false, .options = .{ .passphrase_count = 5 } } },
+        .{ .cmd = &.{ "phragen", "--count", "10" }, .expected = .{ .options = .{ .passphrase_count = 5 } } },
+        .{ .cmd = &.{ "phragen", "--words", "20" }, .expected = .{ .options = .{ .word_count = 20 } } },
+        .{ .cmd = &.{ "phragen", "-w", "4" }, .expected = .{ .options = .{ .word_count = 4 } } },
+        .{ .cmd = &.{ "phragen", "--separator", "-" }, .expected = .{ .options = .{ .separator = '-' } } },
+        .{ .cmd = &.{ "phragen", "-s", "!" }, .expected = .{ .options = .{ .separator = '!' } } },
+        .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .options = .{ .word_count = 12, .separator = '^' } } },
+        .{ .cmd = &.{ "phragen", "-s", "%", "-w", "8" }, .expected = .{ .options = .{ .word_count = 8, .separator = '%' } } },
     };
 
     for (cases) |case| {
         const args: Args = .{ .vector = case.cmd };
-        const opt = try phragen.parseArgs(args, allocator);
+        const cli_args = try phragen.parseArgs(args, allocator);
 
-        try expectEqual(case.expected.word_count, opt.word_count);
-        try expectEqual(case.expected.separator, opt.separator);
+        try expectEqual(case.expected.options.word_count, cli_args.options.word_count);
+        try expectEqual(case.expected.options.separator, cli_args.options.separator);
     }
 }
 

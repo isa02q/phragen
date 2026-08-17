@@ -20,6 +20,7 @@ test "parseArgs(): valid args are parsed correctly" {
     }{
         .{ .cmd = &.{ "phragen", "--version" }, .expected = .{ .version = true } },
         .{ .cmd = &.{ "phragen", "-v", "--count", "2" }, .expected = .{ .version = true } },
+        .{ .cmd = &.{ "phragen", "--help" }, .expected = .{ .help = true } },
         .{ .cmd = &.{ "phragen", "-c", "5" }, .expected = .{ .version = false, .options = .{ .passphrase_count = 5 } } },
         .{ .cmd = &.{ "phragen", "--count", "10" }, .expected = .{ .options = .{ .passphrase_count = 5 } } },
         .{ .cmd = &.{ "phragen", "--words", "20" }, .expected = .{ .options = .{ .word_count = 20 } } },

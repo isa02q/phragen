@@ -6,6 +6,20 @@ const words = @import("words.zig").words;
 const Allocator = std.mem.Allocator;
 const Args = std.process.Args;
 
+const help = (
+    \\Phragen - Configurable passphrase generator
+    \\
+    \\Usage: phragen [OPTIONS]
+    \\
+    \\Options:
+    \\  -v, --version           Print version and exit
+    \\  -h, --help              Print this help and exit
+    \\  -c, --count <int>       Number of passphrases to generate (default: 1)
+    \\  -w, --words <int>       Number of words in the passphrase (default: 6, minimal: 4)
+    \\  -s, --separator <char>  Character used to separate words (default: ",")
+    \\
+);
+
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const allocator = init.arena.allocator();
@@ -18,6 +32,11 @@ pub fn main(init: std.process.Init) !void {
     if (args.version) {
         const version = std.fmt.comptimePrint("{f}\n", .{build_options.version});
         try std.Io.File.stdout().writeStreamingAll(io, version);
+        std.process.exit(0);
+    }
+
+    if (args.help) {
+        try std.Io.File.stdout().writeStreamingAll(io, help);
         std.process.exit(0);
     }
 
@@ -45,6 +64,9 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
     while (args_it.next()) |arg| {
         if (memeq(u8, arg, "--version") or memeq(u8, arg, "-v")) {
             cli_args.version = true;
+            break;
+        } else if (memeq(u8, arg, "--help") or memeq(u8, arg, "-h")) {
+            cli_args.help = true;
             break;
         } else if (memeq(u8, arg, "--count") or memeq(u8, arg, "-c")) {
             const passphrase_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
@@ -75,6 +97,7 @@ pub const ParseArgsError = error{
 
 pub const CliArgs = struct {
     version: bool = false,
+    help: bool = false,
     options: GenerationOptions = .{},
 };
 

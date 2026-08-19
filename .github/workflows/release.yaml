@@ -35,6 +35,8 @@ jobs:
       - build
     env:
       GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.ref_name }}
+      RELEASE_NOTES_FILE: release-notes.md
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -49,10 +51,8 @@ jobs:
         run: git fetch --tags --force
 
       - name: Write release notes
-        env:
+        env: 
           REPO_URL: https://github.com/${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
-          RELEASE_NOTES_FILE: release-notes.md
         run: |
           PREV_TAG=$(git tag --sort=-v:refname \
             | awk -v tag="${RELEASE_TAG}" '$0 == tag { found=1; next } found { print; exit }')

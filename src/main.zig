@@ -15,7 +15,7 @@ const help = (
     \\  -v, --version           Print version and exit
     \\  -h, --help              Print this help and exit
     \\  -c, --count <int>       Number of passphrases to generate (default: 1)
-    \\  -w, --words <int>       Number of words in the passphrase (default: 6, minimal: 4)
+    \\  -w, --words <int>       Number of words in the passphrase (default: 6, minimum: 4)
     \\  -s, --separator <char>  Character used to separate words (default: ",")
     \\
 );
@@ -148,10 +148,10 @@ pub const GenerationOptions = struct {
 
     pub fn validate(self: GenerationOptions) Error!void {
         if (self.passphrase_count < 1) {
-            return Error.PassphraseCountBelowMinimal;
+            return Error.PassphraseCountBelowMinimum;
         }
         if (self.word_count < min_word_count) {
-            return Error.WordCountBelowMinimal;
+            return Error.WordCountBelowMinimum;
         }
         if (!isAllowedSeparatorCharacter(self.separator)) {
             return Error.SeparatorIsDisallowedCharacter;
@@ -159,8 +159,8 @@ pub const GenerationOptions = struct {
     }
 
     pub const Error = error{
-        PassphraseCountBelowMinimal,
-        WordCountBelowMinimal,
+        PassphraseCountBelowMinimum,
+        WordCountBelowMinimum,
         SeparatorIsDisallowedCharacter,
     };
 };

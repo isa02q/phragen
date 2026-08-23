@@ -26,8 +26,27 @@ pub fn main(init: std.process.Init) !void {
     const rng_impl: std.Random.IoSource = .{ .io = io };
     const rng = rng_impl.interface();
 
-    const args = try parseArgs(init.minimal.args, allocator);
-    try args.options.validate();
+    const args = parseArgs(init.minimal.args, allocator) catch |err| {
+        const message = switch (err) {
+            error.MissingValue => "A required value is missing for one of the options",
+            error.InvalidValue => "A value for one of the options is invalid",
+            error.InvalidOption => "One of the options is invalid",
+            error.UnexpectedArgument => "A positional argument is unexpected",
+            else => return err,
+        };
+
+        printErrorMessage(io, err, message);
+    };
+
+    args.options.validate() catch |err| {
+        const message = switch (err) {
+            error.PassphraseCountBelowMinimum => "The number of passphrases to generate must be at least 1",
+            error.WordCountBelowMinimum => "A passphrase must contain at least 4 words for security reasons",
+            error.SeparatorIsDisallowedCharacter => "The specified character is not allowed as a separator",
+        };
+
+        printErrorMessage(io, err, message);
+    };
 
     if (args.version) {
         const version = std.fmt.comptimePrint("{f}\n", .{build_options.version});
@@ -172,4 +191,23 @@ fn isAllowedSeparatorCharacter(c: u8) bool {
         '0'...'9', '-', '=', '_', '.', ',', ' ', '/', ':', ';', '+', '~', '*', '#', '!', '?', '@', '$', '%', '&' => true,
         else => false,
     };
+}
+
+fn printErrorMessage(io: std.Io, err: anyerror, message: []const u8) noreturn {
+    const file = std.Io.File.stderr();
+    var buffer: [128]u8 = undefined;
+    var stderr_writer = file.writer(io, &buffer);
+    const stderr = &stderr_writer.interface;
+
+    const supports_ansi = file.supportsAnsiEscapeCodes(io) catch false;
+    if (supports_ansi) {
+        // Print `error:` in bold red.
+        stderr.print("\x1b[1;31merror:\x1b[0m {s}\n", .{@errorName(err)}) catch {};
+    } else {
+        stderr.print("error: {s}\n", .{@errorName(err)}) catch {};
+    }
+    stderr.print("{s}\n", .{message}) catch {};
+    stderr.flush() catch {};
+
+    std.process.exit(1);
 }

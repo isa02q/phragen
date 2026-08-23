@@ -1,7 +1,6 @@
 const std = @import("std");
 const build_options = @import("build_options");
-
-const words = @import("words.zig").words;
+const wordlist = @import("wordlist.zig").wordlist;
 
 const Allocator = std.mem.Allocator;
 const Args = std.process.Args;
@@ -23,8 +22,6 @@ const help = (
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const allocator = init.arena.allocator();
-    const rng_impl: std.Random.IoSource = .{ .io = io };
-    const rng = rng_impl.interface();
 
     const args = parseArgs(init.minimal.args, allocator) catch |err| {
         const message = switch (err) {
@@ -59,6 +56,8 @@ pub fn main(init: std.process.Init) !void {
         std.process.exit(0);
     }
 
+    const rng_impl: std.Random.IoSource = .{ .io = io };
+    const rng = rng_impl.interface();
     const passphrases = try generatePassphrases(allocator, rng, args.options);
 
     const buffer = try allocator.alloc(u8, args.options.word_count * 10 * args.options.passphrase_count);
@@ -120,6 +119,32 @@ pub const CliArgs = struct {
     options: GenerationOptions = .{},
 };
 
+pub const GenerationOptions = struct {
+    passphrase_count: usize = 1,
+    word_count: usize = 6,
+    separator: u8 = ',',
+
+    pub fn validate(self: GenerationOptions) Error!void {
+        if (self.passphrase_count < 1) {
+            return Error.PassphraseCountBelowMinimum;
+        }
+        if (self.word_count < min_word_count) {
+            return Error.WordCountBelowMinimum;
+        }
+        if (!isAllowedSeparatorCharacter(self.separator)) {
+            return Error.SeparatorIsDisallowedCharacter;
+        }
+    }
+
+    pub const Error = error{
+        PassphraseCountBelowMinimum,
+        WordCountBelowMinimum,
+        SeparatorIsDisallowedCharacter,
+    };
+};
+
+const min_word_count = 4;
+
 pub fn generatePassphrases(
     allocator: Allocator,
     rng: std.Random,
@@ -148,43 +173,17 @@ fn generateSinglePassphrase(
     errdefer list.deinit(allocator);
 
     // Pick the first word before the loop to avoid the per-iteration separator necessity check.
-    const firstword_index = rng.uintLessThan(usize, words.len);
-    try list.appendSlice(allocator, words[firstword_index]);
+    const firstword_index = rng.uintLessThan(usize, wordlist.len);
+    try list.appendSlice(allocator, wordlist[firstword_index]);
 
     for (1..opt.word_count) |_| {
         try list.append(allocator, opt.separator);
-        const index = rng.uintLessThan(usize, words.len);
-        try list.appendSlice(allocator, words[index]);
+        const index = rng.uintLessThan(usize, wordlist.len);
+        try list.appendSlice(allocator, wordlist[index]);
     }
 
     return list.toOwnedSlice(allocator);
 }
-
-pub const GenerationOptions = struct {
-    passphrase_count: usize = 1,
-    word_count: usize = 6,
-    separator: u8 = ',',
-
-    pub fn validate(self: GenerationOptions) Error!void {
-        if (self.passphrase_count < 1) {
-            return Error.PassphraseCountBelowMinimum;
-        }
-        if (self.word_count < min_word_count) {
-            return Error.WordCountBelowMinimum;
-        }
-        if (!isAllowedSeparatorCharacter(self.separator)) {
-            return Error.SeparatorIsDisallowedCharacter;
-        }
-    }
-
-    pub const Error = error{
-        PassphraseCountBelowMinimum,
-        WordCountBelowMinimum,
-        SeparatorIsDisallowedCharacter,
-    };
-};
-
-const min_word_count = 4;
 
 fn isAllowedSeparatorCharacter(c: u8) bool {
     return switch (c) {

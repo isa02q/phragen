@@ -94,9 +94,9 @@ test "opt.validate(): fails with expected error when invalid options passed" {
         opt: GenerationOptions,
         expectedError: GenerationOptions.Error,
     }{
-        .{ .opt = .{ .passphrase_count = 0 }, .expectedError = GenerationOptions.Error.PassphraseCountBelowMinimal },
-        .{ .opt = .{ .word_count = 3 }, .expectedError = GenerationOptions.Error.WordCountBelowMinimal },
-        .{ .opt = .{ .word_count = 0 }, .expectedError = GenerationOptions.Error.WordCountBelowMinimal },
+        .{ .opt = .{ .passphrase_count = 0 }, .expectedError = GenerationOptions.Error.PassphraseCountBelowMinimum },
+        .{ .opt = .{ .word_count = 3 }, .expectedError = GenerationOptions.Error.WordCountBelowMinimum },
+        .{ .opt = .{ .word_count = 0 }, .expectedError = GenerationOptions.Error.WordCountBelowMinimum },
         .{ .opt = .{ .separator = '\\' }, .expectedError = GenerationOptions.Error.SeparatorIsDisallowedCharacter },
         .{ .opt = .{ .separator = '`' }, .expectedError = GenerationOptions.Error.SeparatorIsDisallowedCharacter },
     };

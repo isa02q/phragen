@@ -16,6 +16,7 @@ const help = (
     \\  -c, --count <int>       Number of passphrases to generate (default: 1)
     \\  -w, --words <int>       Number of words in the passphrase (default: 6, minimum: 4)
     \\  -s, --separator <char>  Character used to separate words (default: ",")
+    \\  --show-entropy          Calculate and print entropy of the passphrase
     \\
 );
 
@@ -63,9 +64,16 @@ pub fn main(init: std.process.Init) !void {
     const buffer = try allocator.alloc(u8, args.options.word_count * 10 * args.options.passphrase_count);
     var stdout_writer = std.Io.File.stdout().writer(io, buffer);
     const stdout = &stdout_writer.interface;
+
+    if (args.show_entropy) {
+        const entropy = calculateEntropy(args.options.word_count, wordlist.len);
+        try stdout.print("A {d}-words passphrase has {d:.3} bits entropy\n\n", .{args.options.word_count, entropy});
+    }
+
     for (passphrases) |passphrase| {
         try stdout.print("{s}\n", .{passphrase});
     }
+
     try stdout.flush();
 }
 
@@ -96,6 +104,8 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
             const separator = args_it.next() orelse return ParseArgsError.MissingValue;
             if (separator.len != 1) return ParseArgsError.InvalidValue;
             cli_args.options.separator = separator[0];
+        } else if (memeq(u8, arg, "--show-entropy")) {
+            cli_args.show_entropy = true;
         } else if (std.mem.startsWith(u8, arg, "-")) {
             return ParseArgsError.InvalidOption;
         } else {
@@ -116,6 +126,7 @@ pub const ParseArgsError = error{
 pub const CliArgs = struct {
     version: bool = false,
     help: bool = false,
+    show_entropy: bool = false,
     options: GenerationOptions = .{},
 };
 
@@ -190,6 +201,13 @@ fn isAllowedSeparatorCharacter(c: u8) bool {
         '0'...'9', '-', '=', '_', '.', ',', ' ', '/', ':', ';', '+', '~', '*', '#', '!', '?', '@', '$', '%', '&' => true,
         else => false,
     };
+}
+
+pub fn calculateEntropy(passphrase_word_count: usize, wordlist_entry_count: usize) f64 {
+    const word_count: f64 = @floatFromInt(passphrase_word_count);
+    const pool_size: f64 = @floatFromInt(wordlist_entry_count);
+
+    return word_count * @log2(pool_size);
 }
 
 fn printErrorMessage(io: std.Io, err: anyerror, message: []const u8) noreturn {

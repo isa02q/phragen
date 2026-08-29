@@ -106,3 +106,11 @@ test "opt.validate(): fails with expected error when invalid options passed" {
         try expectError(case.expectedError, result);
     }
 }
+
+test "calculateEntropy()" {
+    const entropy_6words = phragen.calculateEntropy(6, 7776);
+    try std.testing.expectApproxEqAbs(@as(f64, 77.54), entropy_6words, 0.01);
+
+    const entropy_14words = phragen.calculateEntropy(14, 1296);
+    try std.testing.expectApproxEqAbs(@as(f64, 144.76), entropy_14words, 0.01);
+}

@@ -68,7 +68,7 @@ jobs:
           fi
 
           cat > "${RELEASE_NOTES_FILE}" <<EOF
-          # Phragen ${RELEASE_TAG} Release Notes
+          ## Summary
 
           $(git for-each-ref refs/tags/"${RELEASE_TAG}" --format="%(contents:body)")
 

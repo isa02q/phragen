@@ -25,10 +25,10 @@ test "parseArgs(): valid args are parsed correctly" {
         .{ .cmd = &.{ "phragen", "--count", "10" }, .expected = .{ .options = .{ .passphrase_count = 5 } } },
         .{ .cmd = &.{ "phragen", "--words", "20" }, .expected = .{ .options = .{ .word_count = 20 } } },
         .{ .cmd = &.{ "phragen", "-w", "4" }, .expected = .{ .options = .{ .word_count = 4 } } },
-        .{ .cmd = &.{ "phragen", "--separator", "-" }, .expected = .{ .options = .{ .separator = '-' } } },
-        .{ .cmd = &.{ "phragen", "-s", "!" }, .expected = .{ .options = .{ .separator = '!' } } },
-        .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .options = .{ .word_count = 12, .separator = '^' } } },
-        .{ .cmd = &.{ "phragen", "-s", "%", "-w", "8" }, .expected = .{ .options = .{ .word_count = 8, .separator = '%' } } },
+        .{ .cmd = &.{ "phragen", "--separator", "-" }, .expected = .{ .options = .{ .separator = .{ .fixed = '-' } } } },
+        .{ .cmd = &.{ "phragen", "-s", "!" }, .expected = .{ .options = .{ .separator = .{ .fixed = '!' } } } },
+        .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .options = .{ .word_count = 12, .separator = .{ .fixed = '^' } } } },
+        .{ .cmd = &.{ "phragen", "-s", "digit", "-w", "8" }, .expected = .{ .options = .{ .word_count = 8, .separator = .digit } } },
     };
 
     for (cases) |case| {
@@ -47,6 +47,7 @@ test "parseArgs(): fails with expected error when invalid args passed" {
     }{
         .{ .cmd = &.{ "phragen", "--count", "!" }, .expectedError = ParseArgsError.InvalidValue },
         .{ .cmd = &.{ "phragen", "--separator" }, .expectedError = ParseArgsError.MissingValue },
+        .{ .cmd = &.{ "phragen", "--separator", "number" }, .expectedError = ParseArgsError.InvalidValue },
         .{ .cmd = &.{ "phragen", "-w" }, .expectedError = ParseArgsError.MissingValue },
         .{ .cmd = &.{ "phragen", "-w", "!" }, .expectedError = ParseArgsError.InvalidValue },
         .{ .cmd = &.{ "phragen", "-s", "??" }, .expectedError = ParseArgsError.InvalidValue },
@@ -70,7 +71,7 @@ test "generatePassphrase(): generated passphrase respects options" {
     const opt: GenerationOptions = .{
         .passphrase_count = 5,
         .word_count = 4, // threshold
-        .separator = ' ',
+        .separator = .{ .fixed = ' ' },
     };
 
     const passphrases = try phragen.generatePassphrases(allocator, random, opt);
@@ -82,7 +83,7 @@ test "generatePassphrase(): generated passphrase respects options" {
     try expectEqual(passphrases.len, opt.passphrase_count);
 
     for (passphrases) |passphrase| {
-        var it = std.mem.splitScalar(u8, passphrase, opt.separator);
+        var it = std.mem.splitScalar(u8, passphrase, opt.separator.fixed);
         var count: usize = 0;
         while (it.next()) |_| count += 1;
         try expectEqual(@as(usize, opt.word_count), count);
@@ -97,8 +98,8 @@ test "opt.validate(): fails with expected error when invalid options passed" {
         .{ .opt = .{ .passphrase_count = 0 }, .expectedError = GenerationOptions.Error.PassphraseCountBelowMinimum },
         .{ .opt = .{ .word_count = 3 }, .expectedError = GenerationOptions.Error.WordCountBelowMinimum },
         .{ .opt = .{ .word_count = 0 }, .expectedError = GenerationOptions.Error.WordCountBelowMinimum },
-        .{ .opt = .{ .separator = '\\' }, .expectedError = GenerationOptions.Error.SeparatorIsDisallowedCharacter },
-        .{ .opt = .{ .separator = '`' }, .expectedError = GenerationOptions.Error.SeparatorIsDisallowedCharacter },
+        .{ .opt = .{ .separator = .{ .fixed = '\\' } }, .expectedError = GenerationOptions.Error.SeparatorIsDisallowedCharacter },
+        .{ .opt = .{ .separator = .{ .fixed = '`' } }, .expectedError = GenerationOptions.Error.SeparatorIsDisallowedCharacter },
     };
 
     for (cases) |case| {
@@ -108,9 +109,17 @@ test "opt.validate(): fails with expected error when invalid options passed" {
 }
 
 test "calculateEntropy()" {
-    const entropy_6words = phragen.calculateEntropy(6, 7776);
-    try std.testing.expectApproxEqAbs(@as(f64, 77.54), entropy_6words, 0.01);
+    const cases = [_]struct {
+        opt: GenerationOptions,
+        expectedEntropy: f64,
+    }{
+        .{ .opt = .{}, .expectedEntropy = 77.55 },
+        .{ .opt = .{ .word_count = 12, .separator = .digit }, .expectedEntropy = 191.6389 },
+        .{ .opt = .{ .word_count = 8, .separator = .mix }, .expectedEntropy = 137.40 },
+    };
 
-    const entropy_14words = phragen.calculateEntropy(14, 1296);
-    try std.testing.expectApproxEqAbs(@as(f64, 144.76), entropy_14words, 0.01);
+    for (cases) |case| {
+        const result = phragen.calculateEntropy(case.opt, 7776);
+        try std.testing.expectApproxEqAbs(@as(f64, case.expectedEntropy), result, 0.01);
+    }
 }

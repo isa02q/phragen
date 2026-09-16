@@ -11,12 +11,18 @@ const help = (
     \\Usage: phragen [OPTIONS]
     \\
     \\Options:
-    \\  -v, --version           Print version and exit
-    \\  -h, --help              Print this help and exit
-    \\  -c, --count <int>       Number of passphrases to generate (default: 1)
-    \\  -w, --words <int>       Number of words in the passphrase (default: 6, minimum: 4)
-    \\  -s, --separator <char>  Character used to separate words (default: ",")
-    \\  --show-entropy          Calculate and print entropy of the passphrase
+    \\  -v, --version            Print version and exit
+    \\  -h, --help               Print this help and exit
+    \\  -c, --count <int>        Number of passphrases to generate (default: 1)
+    \\  -w, --words <int>        Number of words in the passphrase (default: 6, minimum: 4)
+    \\  -s, --separator <value>  Character or keyword used to separate words (default: ",")
+    \\                           Supported values:
+    \\                             <char>  Use the given character as a separator
+    \\                             digit   Use random digits as separators
+    \\                             symbol  Use random symbols as separators
+    \\                             mix     Use random digits or symbols as separators
+    \\                             none    Disable separators
+    \\  --show-entropy           Calculate and print entropy of the passphrase
     \\
 );
 
@@ -66,8 +72,11 @@ pub fn main(init: std.process.Init) !void {
     const stdout = &stdout_writer.interface;
 
     if (args.show_entropy) {
-        const entropy = calculateEntropy(args.options.word_count, wordlist.len);
-        try stdout.print("A {d}-words passphrase has {d:.3} bits entropy\n\n", .{args.options.word_count, entropy});
+        const entropy = calculateEntropy(args.options, wordlist.len);
+        try stdout.print(
+            "A {d}-word passphrase has {d:.3} bits of entropy (includes separator randomness)\n\n",
+            .{ args.options.word_count, entropy },
+        );
     }
 
     for (passphrases) |passphrase| {
@@ -101,9 +110,14 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
             const word_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
             cli_args.options.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
         } else if (memeq(u8, arg, "--separator") or memeq(u8, arg, "-s")) {
-            const separator = args_it.next() orelse return ParseArgsError.MissingValue;
-            if (separator.len != 1) return ParseArgsError.InvalidValue;
-            cli_args.options.separator = separator[0];
+            const separator_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (separator_str.len == 1) {
+                cli_args.options.separator = .{ .fixed = separator_str[0] };
+            } else if (Separator.keywords.get(separator_str)) |value| {
+                cli_args.options.separator = value;
+            } else {
+                return ParseArgsError.InvalidValue;
+            }
         } else if (memeq(u8, arg, "--show-entropy")) {
             cli_args.show_entropy = true;
         } else if (std.mem.startsWith(u8, arg, "-")) {
@@ -133,17 +147,20 @@ pub const CliArgs = struct {
 pub const GenerationOptions = struct {
     passphrase_count: usize = 1,
     word_count: usize = 6,
-    separator: u8 = ',',
+    separator: Separator = .{ .fixed = ',' },
 
-    pub fn validate(self: GenerationOptions) Error!void {
+    pub fn validate(self: @This()) Error!void {
         if (self.passphrase_count < 1) {
             return Error.PassphraseCountBelowMinimum;
         }
         if (self.word_count < min_word_count) {
             return Error.WordCountBelowMinimum;
         }
-        if (!isAllowedSeparatorCharacter(self.separator)) {
-            return Error.SeparatorIsDisallowedCharacter;
+        switch (self.separator) {
+            .fixed => |char| {
+                if (!isAllowedSeparatorCharacter(char)) return Error.SeparatorIsDisallowedCharacter;
+            },
+            else => {},
         }
     }
 
@@ -152,6 +169,36 @@ pub const GenerationOptions = struct {
         WordCountBelowMinimum,
         SeparatorIsDisallowedCharacter,
     };
+};
+
+const Separator = union(enum) {
+    fixed: u8,
+    digit,
+    symbol,
+    mix,
+    none, // disable separators
+
+    const digit_pool = "0123456789";
+    const symbol_pool = "-=_., /:;+~*#!?@$%&";
+    const mixed_pool = digit_pool ++ symbol_pool;
+
+    fn resolve(self: @This(), rng: std.Random) ?u8 {
+        return switch (self) {
+            .fixed => |c| c,
+            .digit => digit_pool[rng.uintLessThan(usize, digit_pool.len)],
+            .symbol => symbol_pool[rng.uintLessThan(usize, symbol_pool.len)],
+            .mix => mixed_pool[rng.uintLessThan(usize, mixed_pool.len)],
+            .none => null,
+        };
+    }
+
+    // A map that converts reserved word strings passed via CLI into their corresponding enum values.
+    const keywords = std.StaticStringMap(Separator).initComptime(.{
+        .{ "digit", .digit },
+        .{ "symbol", .symbol },
+        .{ "mix", .mix },
+        .{ "none", .none },
+    });
 };
 
 const min_word_count = 4;
@@ -188,7 +235,9 @@ fn generateSinglePassphrase(
     try list.appendSlice(allocator, wordlist[firstword_index]);
 
     for (1..opt.word_count) |_| {
-        try list.append(allocator, opt.separator);
+        if (opt.separator.resolve(rng)) |separator| {
+            try list.append(allocator, separator);
+        }
         const index = rng.uintLessThan(usize, wordlist.len);
         try list.appendSlice(allocator, wordlist[index]);
     }
@@ -196,18 +245,26 @@ fn generateSinglePassphrase(
     return list.toOwnedSlice(allocator);
 }
 
-fn isAllowedSeparatorCharacter(c: u8) bool {
-    return switch (c) {
-        '0'...'9', '-', '=', '_', '.', ',', ' ', '/', ':', ';', '+', '~', '*', '#', '!', '?', '@', '$', '%', '&' => true,
-        else => false,
-    };
+fn isAllowedSeparatorCharacter(char: u8) bool {
+    return std.mem.indexOfScalar(u8, Separator.mixed_pool, char) != null;
 }
 
-pub fn calculateEntropy(passphrase_word_count: usize, wordlist_entry_count: usize) f64 {
-    const word_count: f64 = @floatFromInt(passphrase_word_count);
+pub fn calculateEntropy(opt: GenerationOptions, wordlist_entry_count: usize) f64 {
+    const word_count: f64 = @floatFromInt(opt.word_count);
     const pool_size: f64 = @floatFromInt(wordlist_entry_count);
 
-    return word_count * @log2(pool_size);
+    var entropy = word_count * @log2(pool_size);
+
+    const gap_count: f64 = @floatFromInt(opt.word_count - 1);
+
+    entropy += switch (opt.separator) {
+        .fixed, .none => 0,
+        .digit => gap_count * @log2(@as(f64, Separator.digit_pool.len)),
+        .symbol => gap_count * @log2(@as(f64, Separator.symbol_pool.len)),
+        .mix => gap_count * @log2(@as(f64, Separator.mixed_pool.len)),
+    };
+
+    return entropy;
 }
 
 fn printErrorMessage(io: std.Io, err: anyerror, message: []const u8) noreturn {

@@ -11,12 +11,18 @@ const help = (
     \\Usage: phragen [OPTIONS]
     \\
     \\Options:
-    \\  -v, --version           Print version and exit
-    \\  -h, --help              Print this help and exit
-    \\  -c, --count <int>       Number of passphrases to generate (default: 1)
-    \\  -w, --words <int>       Number of words in the passphrase (default: 6, minimum: 4)
-    \\  -s, --separator <char>  Character used to separate words (default: ",")
-    \\  --show-entropy          Calculate and print entropy of the passphrase
+    \\  -v, --version            Print version and exit
+    \\  -h, --help               Print this help and exit
+    \\  -c, --count <int>        Number of passphrases to generate (default: 1)
+    \\  -w, --words <int>        Number of words in the passphrase (default: 6, minimum: 4)
+    \\  -s, --separator <value>  Character or keyword used to separate words (default: ",")
+    \\                           Supported values:
+    \\                             <char>  Use the given character as a separator
+    \\                             digit   Use random digits as separators
+    \\                             symbol  Use random symbols as separators
+    \\                             mix     Use random digits or symbols as separators
+    \\                             none    Disable separators
+    \\  --show-entropy           Calculate and print entropy of the passphrase
     \\
 );
 

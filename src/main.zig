@@ -66,8 +66,11 @@ pub fn main(init: std.process.Init) !void {
     const stdout = &stdout_writer.interface;
 
     if (args.show_entropy) {
-        const entropy = calculateEntropy(args.options.word_count, wordlist.len);
-        try stdout.print("A {d}-words passphrase has {d:.3} bits entropy\n\n", .{ args.options.word_count, entropy });
+        const entropy = calculateEntropy(args.options, wordlist.len);
+        try stdout.print(
+            "A {d}-word passphrase has {d:.3} bits of entropy (includes separator randomness)\n\n",
+            .{ args.options.word_count, entropy },
+        );
     }
 
     for (passphrases) |passphrase| {
@@ -240,11 +243,22 @@ fn isAllowedSeparatorCharacter(char: u8) bool {
     return std.mem.indexOfScalar(u8, Separator.mixed_pool, char) != null;
 }
 
-pub fn calculateEntropy(passphrase_word_count: usize, wordlist_entry_count: usize) f64 {
-    const word_count: f64 = @floatFromInt(passphrase_word_count);
+pub fn calculateEntropy(opt: GenerationOptions, wordlist_entry_count: usize) f64 {
+    const word_count: f64 = @floatFromInt(opt.word_count);
     const pool_size: f64 = @floatFromInt(wordlist_entry_count);
 
-    return word_count * @log2(pool_size);
+    var entropy = word_count * @log2(pool_size);
+
+    const gap_count: f64 = @floatFromInt(opt.word_count - 1);
+
+    entropy += switch (opt.separator) {
+        .fixed, .none => 0,
+        .digit => gap_count * @log2(@as(f64, Separator.digit_pool.len)),
+        .symbol => gap_count * @log2(@as(f64, Separator.symbol_pool.len)),
+        .mix => gap_count * @log2(@as(f64, Separator.mixed_pool.len)),
+    };
+
+    return entropy;
 }
 
 fn printErrorMessage(io: std.Io, err: anyerror, message: []const u8) noreturn {

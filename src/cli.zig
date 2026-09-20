@@ -157,7 +157,7 @@ test "parseArgs(): fails with expected error when invalid args passed" {
     }
 }
 
-fn printErrorMessage(io: std.Io, err: anyerror, message: []const u8) noreturn {
+pub fn printErrorMessage(io: std.Io, err: anyerror, message: []const u8) noreturn {
     const file = std.Io.File.stderr();
     var buffer: [128]u8 = undefined;
     var stderr_writer = file.writer(io, &buffer);

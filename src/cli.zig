@@ -90,14 +90,14 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
     return cli_args;
 }
 
-pub const CliArgs = struct {
+const CliArgs = struct {
     version: bool = false,
     help: bool = false,
     show_entropy: bool = false,
     options: passphrase.GenerationOptions = .{},
 };
 
-pub const ParseArgsError = error{
+const ParseArgsError = error{
     MissingValue,
     InvalidValue,
     InvalidOption,

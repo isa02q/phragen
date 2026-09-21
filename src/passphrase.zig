@@ -42,13 +42,13 @@ pub const GenerationOptions = struct {
         }
         switch (self.separator) {
             .fixed => |char| {
-                if (!isAllowedSeparatorCharacter(char)) return Error.SeparatorIsDisallowedCharacter;
+                if (!Separator.isAllowedCharacter(char)) return Error.SeparatorIsDisallowedCharacter;
             },
             else => {},
         }
     }
 
-    pub const Error = error{
+    const Error = error{
         PassphraseCountBelowMinimum,
         WordCountBelowMinimum,
         SeparatorIsDisallowedCharacter,
@@ -78,6 +78,10 @@ pub const Separator = union(enum) {
         };
     }
 
+    fn isAllowedCharacter(char: u8) bool {
+        return std.mem.indexOfScalar(u8, mixed_pool, char) != null;
+    }
+
     // A map that converts reserved word strings passed via CLI into their corresponding enum values.
     pub const keywords = std.StaticStringMap(Separator).initComptime(.{
         .{ "digit", .digit },
@@ -86,10 +90,6 @@ pub const Separator = union(enum) {
         .{ "none", .none },
     });
 };
-
-fn isAllowedSeparatorCharacter(char: u8) bool {
-    return std.mem.indexOfScalar(u8, Separator.mixed_pool, char) != null;
-}
 
 test "generatePassphrase(): generated passphrase respects options" {
     var prng = std.Random.DefaultPrng.init(0);

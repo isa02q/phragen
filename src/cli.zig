@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const passphrase = @import("passphrase.zig");
-const wordlist = @import("wordlist.zig").wordlist;
 
 const Args = std.process.Args;
 const Allocator = std.mem.Allocator;
@@ -28,9 +27,10 @@ pub fn run(io: std.Io, allocator: Allocator, args: CliArgs) RunError!void {
     const buffer = try allocator.alloc(u8, args.options.word_count * 10 * args.options.passphrase_count);
     var stdout_writer = std.Io.File.stdout().writer(io, buffer);
     const stdout = &stdout_writer.interface;
+    defer stdout.flush() catch {};
 
     if (args.show_entropy) {
-        const result = @import("entropy.zig").calculateEntropy(args.options, wordlist.len);
+        const result = @import("entropy.zig").calculateEntropy(args.options, @import("wordlist.zig").wordlist.len);
         try stdout.print(
             "A {d}-word passphrase has {d:.3} bits of entropy (includes separator randomness)\n\n",
             .{ args.options.word_count, result },
@@ -40,8 +40,6 @@ pub fn run(io: std.Io, allocator: Allocator, args: CliArgs) RunError!void {
     for (passphrases) |item| {
         try stdout.print("{s}\n", .{item});
     }
-
-    try stdout.flush();
 }
 
 const RunError = Allocator.Error || std.Io.Writer.Error;
@@ -155,23 +153,4 @@ test "parseArgs(): fails with expected error when invalid args passed" {
 
         try std.testing.expectError(case.expectedError, result);
     }
-}
-
-pub fn printErrorMessage(io: std.Io, err: anyerror, message: []const u8) noreturn {
-    const file = std.Io.File.stderr();
-    var buffer: [128]u8 = undefined;
-    var stderr_writer = file.writer(io, &buffer);
-    const stderr = &stderr_writer.interface;
-
-    const supports_ansi = file.supportsAnsiEscapeCodes(io) catch false;
-    if (supports_ansi) {
-        // Print `error:` in bold red.
-        stderr.print("\x1b[1;31merror:\x1b[0m {s}\n", .{@errorName(err)}) catch {};
-    } else {
-        stderr.print("error: {s}\n", .{@errorName(err)}) catch {};
-    }
-    stderr.print("{s}\n", .{message}) catch {};
-    stderr.flush() catch {};
-
-    std.process.exit(1);
 }

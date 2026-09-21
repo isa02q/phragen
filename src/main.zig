@@ -4,6 +4,7 @@ const cli = @import("cli.zig");
 
 const Allocator = std.mem.Allocator;
 const Args = std.process.Args;
+const fatal = std.process.fatal;
 
 const help = (
     \\Phragen - Configurable passphrase generator
@@ -31,15 +32,13 @@ pub fn main(init: std.process.Init) !void {
     const allocator = init.arena.allocator();
 
     const args = cli.parseArgs(init.minimal.args, allocator) catch |err| {
-        const message = switch (err) {
-            error.MissingValue => "A required value is missing for one of the options",
-            error.InvalidValue => "A value for one of the options is invalid",
-            error.InvalidOption => "One of the options is invalid",
-            error.UnexpectedArgument => "A positional argument is unexpected",
+        switch (err) {
+            error.MissingValue => fatal("A required value is missing for one of the options", .{}),
+            error.InvalidValue => fatal("A value for one of the options is invalid", .{}),
+            error.InvalidOption => fatal("One of the options is invalid", .{}),
+            error.UnexpectedArgument => fatal("A positional argument is unexpected", .{}),
             else => return err,
-        };
-
-        cli.printErrorMessage(io, err, message);
+        }
     };
 
     // Handle early exit flags.
@@ -57,13 +56,11 @@ pub fn main(init: std.process.Init) !void {
     }
 
     args.options.validate() catch |err| {
-        const message = switch (err) {
-            error.PassphraseCountBelowMinimum => "The number of passphrases to generate must be at least 1",
-            error.WordCountBelowMinimum => "A passphrase must contain at least 4 words for security reasons",
-            error.SeparatorIsDisallowedCharacter => "The specified character is not allowed as a separator",
-        };
-
-        cli.printErrorMessage(io, err, message);
+        switch (err) {
+            error.PassphraseCountBelowMinimum => fatal("The number of passphrases to generate must be at least 1", .{}),
+            error.WordCountBelowMinimum => fatal("A passphrase must contain at least 4 words for security reasons", .{}),
+            error.SeparatorIsDisallowedCharacter => fatal("The specified character is not allowed as a separator", .{}),
+        }
     };
 
     // Run the actual passphrase generation logic.

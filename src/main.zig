@@ -23,8 +23,9 @@ const help = (
     \\                             symbol  Use random symbols as separators
     \\                             mix     Use random digits or symbols as separators
     \\                             none    Disable separators
-    \\  -p, --preset <keyword>     Preset suited to a given purpose
-    \\                           Supported keywords:
+    \\  -p, --preset <value>     Preset suited to a given purpose
+    \\                           When an option is passed explicitly, it takes precedence
+    \\                           Supported value:
     \\                             master   High-entropy passphrase for critical accounts (8 words, 137 bits)
     \\                             simple   Memorable and typable passphrase for everyday use (6 words, 77 bits)
     \\                             pin      Weak alphanumeric passphrase for PIN-like use cases (4 words, 61 bits)

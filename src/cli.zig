@@ -57,6 +57,11 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
 
     var cli_args: CliArgs = .{};
 
+    var is_set = struct {
+        word_count: bool = false,
+        separator: bool = false,
+    }{};
+
     const memeq = std.mem.eql;
     while (args_it.next()) |arg| {
         if (memeq(u8, arg, "--version") or memeq(u8, arg, "-v")) {
@@ -71,6 +76,7 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
         } else if (memeq(u8, arg, "--words") or memeq(u8, arg, "-w")) {
             const word_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
             cli_args.options.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
+            is_set.word_count = true;
         } else if (memeq(u8, arg, "--separator") or memeq(u8, arg, "-s")) {
             const separator_str = args_it.next() orelse return ParseArgsError.MissingValue;
             if (separator_str.len == 1) {
@@ -80,10 +86,13 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
             } else {
                 return ParseArgsError.InvalidValue;
             }
+            is_set.separator = true;
         } else if (memeq(u8, arg, "--preset") or memeq(u8, arg, "-p")) {
             const preset_str = args_it.next() orelse return ParseArgsError.MissingValue;
             if (passphrase.Preset.keywords.get(preset_str)) |value| {
-                cli_args.options = value.options();
+                const opt = value.options();
+                if (!is_set.word_count) cli_args.options.word_count = opt.word_count;
+                if (!is_set.separator) cli_args.options.separator = opt.separator;
             } else {
                 return ParseArgsError.InvalidValue;
             }
@@ -130,7 +139,8 @@ test "parseArgs(): valid args are parsed correctly" {
         .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .options = .{ .word_count = 12, .separator = .{ .fixed = '^' } } } },
         .{ .cmd = &.{ "phragen", "-s", "digit", "-w", "8" }, .expected = .{ .options = .{ .word_count = 8, .separator = .digit } } },
         .{ .cmd = &.{ "phragen", "--preset", "master" }, .expected = .{ .options = .{ .word_count = 8, .separator = .mix } } },
-        .{ .cmd = &.{ "phragen", "-p", "pin4" }, .expected = .{ .options = .{ .word_count = 4, .separator = .digit } } },
+        .{ .cmd = &.{ "phragen", "-p", "pin" }, .expected = .{ .options = .{ .word_count = 4, .separator = .digit } } },
+        .{ .cmd = &.{ "phragen", "--separator", ":", "--preset", "simple", "-w", "7" }, .expected = .{ .options = .{ .word_count = 7, .separator = .{ .fixed = ':' } } } },
     };
 
     for (cases) |case| {

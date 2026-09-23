@@ -20,18 +20,14 @@ pub fn calculateEntropy(opt: passphrase.GenerationOptions, wordlist_entry_count:
     return entropy;
 }
 
-test "calculateEntropy()" {
-    const cases = [_]struct {
-        opt: passphrase.GenerationOptions,
-        expectedEntropy: f64,
-    }{
-        .{ .opt = .{}, .expectedEntropy = 77.55 },
-        .{ .opt = .{ .word_count = 12, .separator = .digit }, .expectedEntropy = 191.6389 },
-        .{ .opt = .{ .word_count = 8, .separator = .mix }, .expectedEntropy = 137.40 },
-    };
+fn testCalculateEntropy(opt: passphrase.GenerationOptions, expected: f64) !void {
+    const entropy = calculateEntropy(opt, 7776);
+    try std.testing.expectApproxEqAbs(@as(f64, expected), entropy, 0.01);
+}
 
-    for (cases) |case| {
-        const result = calculateEntropy(case.opt, 7776);
-        try std.testing.expectApproxEqAbs(@as(f64, case.expectedEntropy), result, 0.01);
-    }
+test "The entropy is calculated accurately" {
+    try testCalculateEntropy(.{}, 77.55);
+    try testCalculateEntropy(.{ .word_count = 12, .separator = .digit }, 191.63);
+    try testCalculateEntropy(.{ .separator = .symbol }, 98.78);
+    try testCalculateEntropy(.{ .word_count = 8, .separator = .mix }, 137.40);
 }

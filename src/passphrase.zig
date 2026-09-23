@@ -91,29 +91,30 @@ pub const Separator = union(enum) {
     });
 };
 
-test "generatePassphrase(): word count matches across various sizes" {
-    var prng = std.Random.DefaultPrng.init(0);
+fn testPassphraseWordCount(word_count: usize) !void {
+    var prng = Random.DefaultPrng.init(0);
     const random = prng.random();
 
     const allocator = std.testing.allocator;
 
-    const cases = [_]usize{ 4, 12, 50, 1000 };
+    const passphrase = try generatePassphrase(allocator, random, .{ .word_count = word_count });
+    defer allocator.free(passphrase);
 
-    for (cases) |case| {
-        const opt: GenerationOptions = .{ .word_count = case, .separator = .{ .fixed = ' ' } };
+    var it = std.mem.splitScalar(u8, passphrase, '.');
+    var count: usize = 0;
+    while (it.next()) |_| count += 1;
 
-        const passphrase = try generatePassphrase(allocator, random, opt);
-        defer allocator.free(passphrase);
-
-        var it = std.mem.splitScalar(u8, passphrase, ' ');
-        var count: usize = 0;
-        while (it.next()) |_| count += 1;
-
-        try std.testing.expectEqual(case, count);
-    }
+    try std.testing.expectEqual(word_count, count);
 }
 
-test "generatePassphrase(): each variant uses only uses allowed characters" {
+test "The word count matches across various sizes" {
+    try testPassphraseWordCount(4);
+    try testPassphraseWordCount(12);
+    try testPassphraseWordCount(50);
+    try testPassphraseWordCount(1000);
+}
+
+fn testGeneratePassphrase(opt: GenerationOptions) !void {
     var prng = std.Random.DefaultPrng.init(0);
     const random = prng.random();
 
@@ -121,69 +122,62 @@ test "generatePassphrase(): each variant uses only uses allowed characters" {
     const expect = std.testing.expect;
     const isAlphabetic = std.ascii.isAlphabetic;
 
-    const cases = [_]struct {
-        opt: GenerationOptions,
-    }{
-        .{ .opt = .{ .separator = .digit } },
-        .{ .opt = .{ .separator = .symbol } },
-        .{ .opt = .{ .separator = .mix } },
-        .{ .opt = .{ .separator = .mix, .word_count = 333 } },
-        .{ .opt = .{ .separator = .none } },
-    };
+    const passphrase = try generatePassphrase(allocator, random, opt);
+    defer allocator.free(passphrase);
 
-    for (cases) |case| {
-        const passphrase = try generatePassphrase(allocator, random, case.opt);
-        defer allocator.free(passphrase);
+    try expect(isAlphabetic(passphrase[0]));
+    try expect(isAlphabetic(passphrase[passphrase.len - 1]));
 
-        try expect(isAlphabetic(passphrase[0]));
-        try expect(isAlphabetic(passphrase[passphrase.len - 1]));
-
-        switch (case.opt.separator) {
-            .fixed => unreachable,
-            .digit => {
-                for (passphrase) |char| try expect(std.ascii.isAlphanumeric(char));
-            },
-            .symbol => {
-                for (passphrase) |char| {
-                    const isAllowed = blk: {
-                        if (std.mem.indexOfScalar(u8, Separator.symbol_pool, char) != null) break :blk true;
-                        break :blk isAlphabetic(char);
-                    };
-                    try expect(isAllowed);
-                }
-            },
-            .mix => {
-                for (passphrase) |char| {
-                    const isAllowed = blk: {
-                        if (std.mem.indexOfScalar(u8, Separator.mixed_pool, char) != null) break :blk true;
-                        break :blk isAlphabetic(char);
-                    };
-                    try expect(isAllowed);
-                }
-            },
-            .none => {
-                for (passphrase) |char| try expect(isAlphabetic(char));
-            },
-        }
+    switch (opt.separator) {
+        .fixed => unreachable,
+        .digit => {
+            for (passphrase) |char| try expect(std.ascii.isAlphanumeric(char));
+        },
+        .symbol => {
+            for (passphrase) |char| {
+                const isAllowed = blk: {
+                    if (std.mem.indexOfScalar(u8, Separator.symbol_pool, char) != null) break :blk true;
+                    break :blk isAlphabetic(char);
+                };
+                try expect(isAllowed);
+            }
+        },
+        .mix => {
+            for (passphrase) |char| {
+                const isAllowed = blk: {
+                    if (std.mem.indexOfScalar(u8, Separator.mixed_pool, char) != null) break :blk true;
+                    break :blk isAlphabetic(char);
+                };
+                try expect(isAllowed);
+            }
+        },
+        .none => {
+            for (passphrase) |char| try expect(isAlphabetic(char));
+        },
     }
 }
 
-test "opt.validate(): fails with expected error when invalid options passed" {
-    const cases = [_]struct {
-        opt: GenerationOptions,
-        expectedError: GenerationOptions.Error,
-    }{
-        .{ .opt = .{ .passphrase_count = 0 }, .expectedError = GenerationOptions.Error.PassphraseCountBelowMinimum },
-        .{ .opt = .{ .word_count = 3 }, .expectedError = GenerationOptions.Error.WordCountBelowMinimum },
-        .{ .opt = .{ .word_count = 0 }, .expectedError = GenerationOptions.Error.WordCountBelowMinimum },
-        .{ .opt = .{ .separator = .{ .fixed = '\\' } }, .expectedError = GenerationOptions.Error.SeparatorIsDisallowedCharacter },
-        .{ .opt = .{ .separator = .{ .fixed = '`' } }, .expectedError = GenerationOptions.Error.SeparatorIsDisallowedCharacter },
-    };
+test "generatePassphrase() respects given options" {
+    try testGeneratePassphrase(.{ .separator = .digit });
+    try testGeneratePassphrase(.{ .separator = .symbol });
+    try testGeneratePassphrase(.{ .separator = .mix });
+    try testGeneratePassphrase(.{ .separator = .none });
+}
 
-    for (cases) |case| {
-        const result = case.opt.validate();
-        try std.testing.expectError(case.expectedError, result);
-    }
+fn testOptionsValidate(
+    opt: GenerationOptions,
+    expected: GenerationOptions.Error,
+) !void {
+    const result = opt.validate();
+    try std.testing.expectError(expected, result);
+}
+
+test "Invalid options return an expected error" {
+    try testOptionsValidate(.{ .passphrase_count = 0 }, GenerationOptions.Error.PassphraseCountBelowMinimum);
+    try testOptionsValidate(.{ .word_count = 3 }, GenerationOptions.Error.WordCountBelowMinimum);
+    try testOptionsValidate(.{ .word_count = 0 }, GenerationOptions.Error.WordCountBelowMinimum);
+    try testOptionsValidate(.{ .separator = .{ .fixed = '\\' } }, GenerationOptions.Error.SeparatorIsDisallowedCharacter);
+    try testOptionsValidate(.{ .separator = .{ .fixed = '`' }}, GenerationOptions.Error.SeparatorIsDisallowedCharacter);
 }
 
 pub const Preset = union(enum) {

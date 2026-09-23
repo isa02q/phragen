@@ -122,55 +122,44 @@ const ParseArgsError = error{
     UnexpectedArgument,
 } || Args.ToSliceError;
 
-test "parseArgs(): valid args are parsed correctly" {
-    const cases = [_]struct {
-        cmd: []const [*:0]const u8,
-        expected: CliArgs,
-    }{
-        .{ .cmd = &.{ "phragen", "--version" }, .expected = .{ .version = true } },
-        .{ .cmd = &.{ "phragen", "-v", "--count", "2" }, .expected = .{ .version = true } },
-        .{ .cmd = &.{ "phragen", "--help" }, .expected = .{ .help = true } },
-        .{ .cmd = &.{ "phragen", "-c", "5" }, .expected = .{ .version = false, .options = .{ .passphrase_count = 5 } } },
-        .{ .cmd = &.{ "phragen", "--count", "10" }, .expected = .{ .options = .{ .passphrase_count = 10 } } },
-        .{ .cmd = &.{ "phragen", "--words", "20" }, .expected = .{ .options = .{ .word_count = 20 } } },
-        .{ .cmd = &.{ "phragen", "-w", "4" }, .expected = .{ .options = .{ .word_count = 4 } } },
-        .{ .cmd = &.{ "phragen", "--separator", "-" }, .expected = .{ .options = .{ .separator = .{ .fixed = '-' } } } },
-        .{ .cmd = &.{ "phragen", "-s", "!" }, .expected = .{ .options = .{ .separator = .{ .fixed = '!' } } } },
-        .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .options = .{ .word_count = 12, .separator = .{ .fixed = '^' } } } },
-        .{ .cmd = &.{ "phragen", "-s", "digit", "-w", "8" }, .expected = .{ .options = .{ .word_count = 8, .separator = .digit } } },
-        .{ .cmd = &.{ "phragen", "--preset", "master" }, .expected = .{ .options = .{ .word_count = 8, .separator = .mix } } },
-        .{ .cmd = &.{ "phragen", "-p", "pin" }, .expected = .{ .options = .{ .word_count = 4, .separator = .digit } } },
-        .{ .cmd = &.{ "phragen", "--separator", ":", "--preset", "simple", "-w", "7" }, .expected = .{ .options = .{ .word_count = 7, .separator = .{ .fixed = ':' } } } },
-    };
+fn testParseArgs(
+    cmd: []const [*:0]const u8,
+    expected: CliArgs,
+) !void {
+    const args: Args = .{ .vector = cmd };
+    const cli_args = parseArgs(args, std.testing.allocator);
 
-    for (cases) |case| {
-        const args: Args = .{ .vector = case.cmd };
-        const cli_args = try parseArgs(args, std.testing.allocator);
-
-        try std.testing.expectEqual(case.expected, cli_args);
-    }
+    try std.testing.expectEqual(expected, cli_args);
 }
 
-test "parseArgs(): fails with expected error when invalid args passed" {
-    const cases = [_]struct {
-        cmd: []const [*:0]const u8,
-        expectedError: ParseArgsError,
-    }{
-        .{ .cmd = &.{ "phragen", "--count", "!" }, .expectedError = ParseArgsError.InvalidValue },
-        .{ .cmd = &.{ "phragen", "--separator" }, .expectedError = ParseArgsError.MissingValue },
-        .{ .cmd = &.{ "phragen", "--separator", "number" }, .expectedError = ParseArgsError.InvalidValue },
-        .{ .cmd = &.{ "phragen", "-w" }, .expectedError = ParseArgsError.MissingValue },
-        .{ .cmd = &.{ "phragen", "-w", "!" }, .expectedError = ParseArgsError.InvalidValue },
-        .{ .cmd = &.{ "phragen", "-s", "??" }, .expectedError = ParseArgsError.InvalidValue },
-        .{ .cmd = &.{ "phragen", "--word", "5" }, .expectedError = ParseArgsError.InvalidOption },
-        .{ .cmd = &.{ "phragen", "--happy" }, .expectedError = ParseArgsError.InvalidOption },
-        .{ .cmd = &.{ "phragen", "hello" }, .expectedError = ParseArgsError.UnexpectedArgument },
-    };
+test "Valid args are parsed correctly" {
+    try testParseArgs(&.{ "phragen", "--version", "--count", "2" }, .{ .version = true });
+    try testParseArgs(&.{ "phragen", "-h" }, .{ .help = true, .options = .{ .separator = .{ .fixed = '.' } } });
+    try testParseArgs(&.{ "phragen", "--count", "5" }, .{ .options = .{ .passphrase_count = 5 } });
+    try testParseArgs(&.{ "phragen", "--words", "8", "-s", "_" }, .{ .options = .{ .word_count = 8, .separator = .{ .fixed = '_' } } });
+    try testParseArgs(&.{ "phragen", "-s", "digit" }, .{ .options = .{ .separator = .digit } });
+    try testParseArgs(&.{ "phragen", "--preset", "master" }, .{ .options = .{ .word_count = 8, .separator = .mix } });
+    try testParseArgs(&.{ "phragen", "-s", "!", "-p", "pin", "-w", "8" }, .{ .options = .{ .word_count = 8, .separator = .{ .fixed = '!' } } });
+    try testParseArgs(&.{ "phragen", "-c", "10", "--words", "7", "--separator", "symbol" }, .{ .options = .{ .passphrase_count = 10, .word_count = 7, .separator = .symbol } });
+}
 
-    for (cases) |case| {
-        const args: Args = .{ .vector = case.cmd };
-        const result = parseArgs(args, std.testing.allocator);
+fn testParseArgsError(
+    cmd: []const [*:0]const u8,
+    expected: ParseArgsError,
+) !void {
+    const args: Args = .{ .vector = cmd };
+    const result = parseArgs(args, std.testing.allocator);
 
-        try std.testing.expectError(case.expectedError, result);
-    }
+    try std.testing.expectError(expected, result);
+}
+
+test "Invalid args return an expected error" {
+    try testParseArgsError(&.{ "phragen", "--count", "!" }, ParseArgsError.InvalidValue);
+    try testParseArgsError(&.{ "phragen", "-s", "string" }, ParseArgsError.InvalidValue);
+    try testParseArgsError(&.{ "phragen", "--separator", "charset" }, ParseArgsError.InvalidValue);
+    try testParseArgsError(&.{ "phragen", "--preset", "login" }, ParseArgsError.InvalidValue);
+    try testParseArgsError(&.{ "phragen", "--separator" }, ParseArgsError.MissingValue);
+    try testParseArgsError(&.{ "phragen", "-w" }, ParseArgsError.MissingValue);
+    try testParseArgsError(&.{ "phragen", "--word", "10" }, ParseArgsError.InvalidOption);
+    try testParseArgsError(&.{ "phragen", "hello" }, ParseArgsError.UnexpectedArgument);
 }

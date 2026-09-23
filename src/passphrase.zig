@@ -217,6 +217,7 @@ pub const Preset = union(enum) {
         .{ "master", .master },
         .{ "simple", .simple },
         .{ "pin", .pin },
+        .{ "extreme", .extreme },
     });
 };
 

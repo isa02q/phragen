@@ -91,24 +91,81 @@ pub const Separator = union(enum) {
     });
 };
 
-test "generatePassphrase(): generated passphrase respects options" {
+test "generatePassphrase(): word count matches across various sizes" {
     var prng = std.Random.DefaultPrng.init(0);
     const random = prng.random();
 
-    const opt: GenerationOptions = .{
-        .word_count = 4, // threshold
-        .separator = .{ .fixed = ' ' },
-    };
-
     const allocator = std.testing.allocator;
 
-    const passphrase = try generatePassphrase(allocator, random, opt);
-    defer allocator.free(passphrase);
+    const cases = [_]usize{ 4, 12, 50, 1000 };
 
-    var it = std.mem.splitScalar(u8, passphrase, opt.separator.fixed);
-    var count: usize = 0;
-    while (it.next()) |_| count += 1;
-    try std.testing.expectEqual(@as(usize, opt.word_count), count);
+    for (cases) |case| {
+        const opt: GenerationOptions = .{ .word_count = case, .separator = .{ .fixed = ' ' } };
+
+        const passphrase = try generatePassphrase(allocator, random, opt);
+        defer allocator.free(passphrase);
+
+        var it = std.mem.splitScalar(u8, passphrase, ' ');
+        var count: usize = 0;
+        while (it.next()) |_| count += 1;
+
+        try std.testing.expectEqual(case, count);
+    }
+}
+
+test "generatePassphrase(): each variant uses only uses allowed characters" {
+    var prng = std.Random.DefaultPrng.init(0);
+    const random = prng.random();
+
+    const allocator = std.testing.allocator;
+    const expect = std.testing.expect;
+    const isAlphabetic = std.ascii.isAlphabetic;
+
+    const cases = [_]struct {
+        opt: GenerationOptions,
+    }{
+        .{ .opt = .{ .separator = .digit } },
+        .{ .opt = .{ .separator = .symbol } },
+        .{ .opt = .{ .separator = .mix } },
+        .{ .opt = .{ .separator = .mix, .word_count = 333 } },
+        .{ .opt = .{ .separator = .none } },
+    };
+
+    for (cases) |case| {
+        const passphrase = try generatePassphrase(allocator, random, case.opt);
+        defer allocator.free(passphrase);
+
+        try expect(isAlphabetic(passphrase[0]));
+        try expect(isAlphabetic(passphrase[passphrase.len - 1]));
+
+        switch (case.opt.separator) {
+            .fixed => unreachable,
+            .digit => {
+                for (passphrase) |char| try expect(std.ascii.isAlphanumeric(char));
+            },
+            .symbol => {
+                for (passphrase) |char| {
+                    const isAllowed = blk: {
+                        if (std.mem.indexOfScalar(u8, Separator.symbol_pool, char) != null) break :blk true;
+                        break :blk isAlphabetic(char);
+                    };
+                    try expect(isAllowed);
+                }
+            },
+            .mix => {
+                for (passphrase) |char| {
+                    const isAllowed = blk: {
+                        if (std.mem.indexOfScalar(u8, Separator.mixed_pool, char) != null) break :blk true;
+                        break :blk isAlphabetic(char);
+                    };
+                    try expect(isAllowed);
+                }
+            },
+            .none => {
+                for (passphrase) |char| try expect(isAlphabetic(char));
+            },
+        }
+    }
 }
 
 test "opt.validate(): fails with expected error when invalid options passed" {

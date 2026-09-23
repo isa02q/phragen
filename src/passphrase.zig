@@ -29,17 +29,14 @@ pub fn generatePassphrase(
 }
 
 pub const GenerationOptions = struct {
-    passphrase_count: usize = 1,
     word_count: usize = 6,
     separator: Separator = .{ .fixed = '.' },
 
     pub fn validate(self: @This()) Error!void {
-        if (self.passphrase_count < 1) {
-            return Error.PassphraseCountBelowMinimum;
-        }
         if (self.word_count < min_word_count) {
             return Error.WordCountBelowMinimum;
         }
+
         switch (self.separator) {
             .fixed => |char| {
                 if (!Separator.isAllowedCharacter(char)) return Error.SeparatorIsDisallowedCharacter;
@@ -49,7 +46,6 @@ pub const GenerationOptions = struct {
     }
 
     const Error = error{
-        PassphraseCountBelowMinimum,
         WordCountBelowMinimum,
         SeparatorIsDisallowedCharacter,
     };
@@ -173,11 +169,10 @@ fn testOptionsValidate(
 }
 
 test "Invalid options return an expected error" {
-    try testOptionsValidate(.{ .passphrase_count = 0 }, GenerationOptions.Error.PassphraseCountBelowMinimum);
     try testOptionsValidate(.{ .word_count = 3 }, GenerationOptions.Error.WordCountBelowMinimum);
     try testOptionsValidate(.{ .word_count = 0 }, GenerationOptions.Error.WordCountBelowMinimum);
     try testOptionsValidate(.{ .separator = .{ .fixed = '\\' } }, GenerationOptions.Error.SeparatorIsDisallowedCharacter);
-    try testOptionsValidate(.{ .separator = .{ .fixed = '`' }}, GenerationOptions.Error.SeparatorIsDisallowedCharacter);
+    try testOptionsValidate(.{ .separator = .{ .fixed = '`' } }, GenerationOptions.Error.SeparatorIsDisallowedCharacter);
 }
 
 pub const Preset = union(enum) {

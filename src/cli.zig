@@ -20,7 +20,7 @@ pub fn run(
             list.deinit(allocator);
         }
 
-        for (0..args.options.passphrase_count) |_| {
+        for (0..args.passphrase_count) |_| {
             const result = try passphrase.generatePassphrase(allocator, rng, args.options);
             try list.append(allocator, result);
         }
@@ -28,7 +28,7 @@ pub fn run(
         break :blk try list.toOwnedSlice(allocator);
     };
 
-    const buffer = try allocator.alloc(u8, args.options.word_count * 10 * args.options.passphrase_count);
+    const buffer = try allocator.alloc(u8, args.options.word_count * 10 * args.passphrase_count);
     var stdout_writer = std.Io.File.stdout().writer(io, buffer);
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
@@ -72,7 +72,9 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
             break;
         } else if (memeq(u8, arg, "--count") or memeq(u8, arg, "-c")) {
             const passphrase_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
-            cli_args.options.passphrase_count = std.fmt.parseInt(usize, passphrase_count_str, 10) catch return ParseArgsError.InvalidValue;
+            const passphrase_count = std.fmt.parseInt(usize, passphrase_count_str, 10) catch return ParseArgsError.InvalidValue;
+            if (passphrase_count == 0) return ParseArgsError.InvalidValue;
+            cli_args.passphrase_count = passphrase_count;
         } else if (memeq(u8, arg, "--words") or memeq(u8, arg, "-w")) {
             const word_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
             cli_args.options.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
@@ -112,6 +114,7 @@ const CliArgs = struct {
     version: bool = false,
     help: bool = false,
     show_entropy: bool = false,
+    passphrase_count: usize = 1,
     options: passphrase.GenerationOptions = .{},
 };
 
@@ -135,12 +138,12 @@ fn testParseArgs(
 test "Valid args are parsed correctly" {
     try testParseArgs(&.{ "phragen", "--version", "--count", "2" }, .{ .version = true });
     try testParseArgs(&.{ "phragen", "-h" }, .{ .help = true, .options = .{ .separator = .{ .fixed = '.' } } });
-    try testParseArgs(&.{ "phragen", "--count", "5" }, .{ .options = .{ .passphrase_count = 5 } });
+    try testParseArgs(&.{ "phragen", "--count", "5" }, .{ .passphrase_count = 5 });
     try testParseArgs(&.{ "phragen", "--words", "8", "-s", "_" }, .{ .options = .{ .word_count = 8, .separator = .{ .fixed = '_' } } });
     try testParseArgs(&.{ "phragen", "-s", "digit" }, .{ .options = .{ .separator = .digit } });
     try testParseArgs(&.{ "phragen", "--preset", "master" }, .{ .options = .{ .word_count = 8, .separator = .mix } });
     try testParseArgs(&.{ "phragen", "-s", "!", "-p", "pin", "-w", "8" }, .{ .options = .{ .word_count = 8, .separator = .{ .fixed = '!' } } });
-    try testParseArgs(&.{ "phragen", "-c", "10", "--words", "7", "--separator", "symbol" }, .{ .options = .{ .passphrase_count = 10, .word_count = 7, .separator = .symbol } });
+    try testParseArgs(&.{ "phragen", "-c", "10", "--words", "7", "--separator", "symbol" }, .{ .passphrase_count = 10, .options = .{ .word_count = 7, .separator = .symbol } });
 }
 
 fn testParseArgsError(
@@ -155,6 +158,7 @@ fn testParseArgsError(
 
 test "Invalid args return an expected error" {
     try testParseArgsError(&.{ "phragen", "--count", "!" }, ParseArgsError.InvalidValue);
+    try testParseArgsError(&.{ "phragen", "-c", "0" }, ParseArgsError.InvalidValue);
     try testParseArgsError(&.{ "phragen", "-s", "string" }, ParseArgsError.InvalidValue);
     try testParseArgsError(&.{ "phragen", "--separator", "charset" }, ParseArgsError.InvalidValue);
     try testParseArgsError(&.{ "phragen", "--preset", "login" }, ParseArgsError.InvalidValue);

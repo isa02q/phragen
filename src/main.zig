@@ -64,7 +64,6 @@ pub fn main(init: std.process.Init) !void {
 
     args.options.validate() catch |err| {
         switch (err) {
-            error.PassphraseCountBelowMinimum => fatal("The number of passphrases to generate must be at least 1", .{}),
             error.WordCountBelowMinimum => fatal("A passphrase must contain at least 4 words for security reasons", .{}),
             error.SeparatorIsDisallowedCharacter => fatal("The specified character is not allowed as a separator", .{}),
         }

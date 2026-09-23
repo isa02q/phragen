@@ -5,7 +5,11 @@ const passphrase = @import("passphrase.zig");
 const Args = std.process.Args;
 const Allocator = std.mem.Allocator;
 
-pub fn run(io: std.Io, allocator: Allocator, args: CliArgs) RunError!void {
+pub fn run(
+    io: std.Io,
+    allocator: Allocator,
+    args: CliArgs,
+) RunError!void {
     const rng_impl: std.Random.IoSource = .{ .io = io };
     const rng = rng_impl.interface();
 
@@ -76,6 +80,13 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
             } else {
                 return ParseArgsError.InvalidValue;
             }
+        } else if (memeq(u8, arg, "--preset") or memeq(u8, arg, "-p")) {
+            const preset_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (passphrase.Preset.keywords.get(preset_str)) |value| {
+                cli_args.options = value.options();
+            } else {
+                return ParseArgsError.InvalidValue;
+            }
         } else if (memeq(u8, arg, "--show-entropy")) {
             cli_args.show_entropy = true;
         } else if (std.mem.startsWith(u8, arg, "-")) {
@@ -118,16 +129,15 @@ test "parseArgs(): valid args are parsed correctly" {
         .{ .cmd = &.{ "phragen", "-s", "!" }, .expected = .{ .options = .{ .separator = .{ .fixed = '!' } } } },
         .{ .cmd = &.{ "phragen", "-w", "12", "--separator", "^" }, .expected = .{ .options = .{ .word_count = 12, .separator = .{ .fixed = '^' } } } },
         .{ .cmd = &.{ "phragen", "-s", "digit", "-w", "8" }, .expected = .{ .options = .{ .word_count = 8, .separator = .digit } } },
+        .{ .cmd = &.{ "phragen", "--preset", "master" }, .expected = .{ .options = .{ .word_count = 8, .separator = .mix } } },
+        .{ .cmd = &.{ "phragen", "-p", "pin4" }, .expected = .{ .options = .{ .word_count = 4, .separator = .digit } } },
     };
-
-    const expectEq = std.testing.expectEqual;
 
     for (cases) |case| {
         const args: Args = .{ .vector = case.cmd };
         const cli_args = try parseArgs(args, std.testing.allocator);
 
-        try expectEq(case.expected, cli_args);
-        try expectEq(case.expected, cli_args);
+        try std.testing.expectEqual(case.expected, cli_args);
     }
 }
 

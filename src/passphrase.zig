@@ -31,7 +31,7 @@ pub fn generatePassphrase(
 pub const GenerationOptions = struct {
     passphrase_count: usize = 1,
     word_count: usize = 6,
-    separator: Separator = .{ .fixed = ',' },
+    separator: Separator = .{ .fixed = '.' },
 
     pub fn validate(self: @This()) Error!void {
         if (self.passphrase_count < 1) {
@@ -62,7 +62,7 @@ pub const Separator = union(enum) {
     digit,
     symbol,
     mix,
-    none, // disable separators
+    none, // Disable separators.
 
     pub const digit_pool = "0123456789";
     pub const symbol_pool = "-=_., /:;+~*#!?@$%&";
@@ -184,4 +184,52 @@ test "opt.validate(): fails with expected error when invalid options passed" {
         const result = case.opt.validate();
         try std.testing.expectError(case.expectedError, result);
     }
+}
+
+pub const Preset = union(enum) {
+    master,
+    simple,
+    pin,
+    extreme,
+
+    pub fn options(self: @This()) GenerationOptions {
+        return switch (self) {
+            .master => .{
+                .word_count = 8,
+                .separator = .mix,
+            },
+            .simple => .{
+                .word_count = 6,
+                .separator = .{ .fixed = '-' },
+            },
+            .pin => .{
+                .word_count = 4,
+                .separator = .digit,
+            },
+            .extreme => .{
+                .word_count = 14,
+                .separator = .mix,
+            },
+        };
+    }
+
+    pub const keywords = std.StaticStringMap(Preset).initComptime(.{
+        .{ "master", .master },
+        .{ "simple", .simple },
+        .{ "pin", .pin },
+    });
+};
+
+fn testPreset(preset: Preset, expected: GenerationOptions) !void {
+    const opt = preset.options();
+    try opt.validate(); // Check whether the options provided by the preset are valid.
+
+    try std.testing.expectEqual(expected, opt);
+}
+
+test "Preset.options()" {
+    try testPreset(.master, .{ .word_count = 8, .separator = .mix });
+    try testPreset(.simple, .{ .word_count = 6, .separator = .{ .fixed = '-' } });
+    try testPreset(.pin, .{ .word_count = 4, .separator = .digit });
+    try testPreset(.extreme, .{ .word_count = 14, .separator = .mix });
 }

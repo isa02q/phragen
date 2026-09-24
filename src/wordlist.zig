@@ -2,6 +2,7 @@ const std = @import("std");
 
 const wordlist_file = @embedFile("./wordlist");
 const wordlist_entry_count = 7776;
+pub const max_word_length = 9;
 pub const wordlist: [wordlist_entry_count][]const u8 = blk: {
     @setEvalBranchQuota(wordlist_entry_count * 50);
 

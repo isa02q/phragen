@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const passphrase = @import("passphrase.zig");
+const wordlist = @import("wordlist.zig");
 
 const Args = std.process.Args;
 const Allocator = std.mem.Allocator;
@@ -28,13 +29,15 @@ pub fn run(
         break :blk try list.toOwnedSlice(allocator);
     };
 
-    const buffer = try allocator.alloc(u8, args.options.word_count * 10 * args.passphrase_count);
+    const buffer_size = // Enough size, including the separator, entropy printing and newline char.
+        (args.options.word_count * wordlist.max_word_length * args.passphrase_count) + args.passphrase_count + (args.options.word_count - 1) + 100;
+    const buffer = try allocator.alloc(u8, buffer_size);
     var stdout_writer = std.Io.File.stdout().writer(io, buffer);
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
 
     if (args.show_entropy) {
-        const result = @import("entropy.zig").calculateEntropy(args.options, @import("wordlist.zig").wordlist.len);
+        const result = @import("entropy.zig").calculateEntropy(args.options, wordlist.wordlist.len);
         try stdout.print(
             "A {d}-word passphrase has {d:.3} bits of entropy (includes separator randomness)\n\n",
             .{ args.options.word_count, result },
@@ -60,6 +63,7 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
     var is_set = struct {
         word_count: bool = false,
         separator: bool = false,
+        capitalize: bool = false,
     }{};
 
     const memeq = std.mem.eql;
@@ -95,6 +99,15 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
                 const opt = value.options();
                 if (!is_set.word_count) cli_args.options.word_count = opt.word_count;
                 if (!is_set.separator) cli_args.options.separator = opt.separator;
+                if (!is_set.capitalize) cli_args.options.capitalize = opt.capitalize;
+            } else {
+                return ParseArgsError.InvalidValue;
+            }
+        } else if (memeq(u8, arg, "--capitalize") or memeq(u8, arg, "-C")) {
+            const capitalize_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (passphrase.CapitalizeStrategy.keywords.get(capitalize_str)) |value| {
+                cli_args.options.capitalize = value;
+                is_set.capitalize = true;
             } else {
                 return ParseArgsError.InvalidValue;
             }
@@ -144,6 +157,8 @@ test "Valid args are parsed correctly" {
     try testParseArgs(&.{ "phragen", "--preset", "master" }, .{ .options = .{ .word_count = 8, .separator = .mix } });
     try testParseArgs(&.{ "phragen", "-s", "!", "-p", "pin", "-w", "8" }, .{ .options = .{ .word_count = 8, .separator = .{ .fixed = '!' } } });
     try testParseArgs(&.{ "phragen", "-c", "10", "--words", "7", "--separator", "symbol" }, .{ .passphrase_count = 10, .options = .{ .word_count = 7, .separator = .symbol } });
+    try testParseArgs(&.{ "phragen", "--capitalize", "all", "--show-entropy" }, .{ .show_entropy = true, .options = .{ .capitalize = .all } });
+    try testParseArgs(&.{ "phragen", "-c", "2", "-C", "initial" }, .{ .passphrase_count = 2, .options = .{ .capitalize = .initial } });
 }
 
 fn testParseArgsError(
@@ -160,6 +175,7 @@ test "Invalid args return an expected error" {
     try testParseArgsError(&.{ "phragen", "--count", "!" }, ParseArgsError.InvalidValue);
     try testParseArgsError(&.{ "phragen", "-c", "0" }, ParseArgsError.InvalidValue);
     try testParseArgsError(&.{ "phragen", "-s", "string" }, ParseArgsError.InvalidValue);
+    try testParseArgsError(&.{ "phragen", "-C", "none" }, ParseArgsError.InvalidValue);
     try testParseArgsError(&.{ "phragen", "--separator", "charset" }, ParseArgsError.InvalidValue);
     try testParseArgsError(&.{ "phragen", "--preset", "login" }, ParseArgsError.InvalidValue);
     try testParseArgsError(&.{ "phragen", "--separator" }, ParseArgsError.MissingValue);

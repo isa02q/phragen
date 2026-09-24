@@ -21,7 +21,7 @@ pub fn calculateEntropy(opt: passphrase.GenerationOptions, wordlist_entry_count:
 }
 
 fn testCalculateEntropy(opt: passphrase.GenerationOptions, expected: f64) !void {
-    const entropy = calculateEntropy(opt, 7776);
+    const entropy = calculateEntropy(opt, @import("wordlist.zig").wordlist.len);
     try std.testing.expectApproxEqAbs(@as(f64, expected), entropy, 0.01);
 }
 

@@ -4,25 +4,35 @@ const wordlist = @import("wordlist.zig").wordlist;
 
 const Allocator = std.mem.Allocator;
 const Random = std.Random;
+const ascii = std.ascii;
+const assert = std.debug.assert;
 
 pub fn generatePassphrase(
     allocator: Allocator,
     rng: Random,
     opt: GenerationOptions,
 ) Allocator.Error![]u8 {
+    assert(opt.word_count >= GenerationOptions.min_word_count);
+
     var list: std.ArrayList(u8) = .empty;
     errdefer list.deinit(allocator);
 
+    var word_buffer: [@import("wordlist.zig").max_word_length]u8 = undefined;
+
     // Pick the first word before the loop to avoid the per-iteration separator necessity check.
-    const firstword_index = rng.uintLessThan(usize, wordlist.len);
-    try list.appendSlice(allocator, wordlist[firstword_index]);
+    const first_word_index = rng.uintLessThan(usize, wordlist.len);
+    const first_word = opt.capitalize.apply(rng, wordlist[first_word_index], &word_buffer);
+    try list.appendSlice(allocator, first_word);
 
     for (1..opt.word_count) |_| {
         if (opt.separator.resolve(rng)) |separator| {
             try list.append(allocator, separator);
         }
+
         const index = rng.uintLessThan(usize, wordlist.len);
-        try list.appendSlice(allocator, wordlist[index]);
+        const word = opt.capitalize.apply(rng, wordlist[index], &word_buffer);
+
+        try list.appendSlice(allocator, word);
     }
 
     return list.toOwnedSlice(allocator);
@@ -31,6 +41,7 @@ pub fn generatePassphrase(
 pub const GenerationOptions = struct {
     word_count: usize = 6,
     separator: Separator = .{ .fixed = '.' },
+    capitalize: CapitalizeStrategy = .none,
 
     pub fn validate(self: @This()) Error!void {
         if (self.word_count < min_word_count) {
@@ -116,7 +127,7 @@ fn testGeneratePassphrase(opt: GenerationOptions) !void {
 
     const allocator = std.testing.allocator;
     const expect = std.testing.expect;
-    const isAlphabetic = std.ascii.isAlphabetic;
+    const isAlphabetic = ascii.isAlphabetic;
 
     const passphrase = try generatePassphrase(allocator, random, opt);
     defer allocator.free(passphrase);
@@ -127,7 +138,7 @@ fn testGeneratePassphrase(opt: GenerationOptions) !void {
     switch (opt.separator) {
         .fixed => unreachable,
         .digit => {
-            for (passphrase) |char| try expect(std.ascii.isAlphanumeric(char));
+            for (passphrase) |char| try expect(ascii.isAlphanumeric(char));
         },
         .symbol => {
             for (passphrase) |char| {
@@ -175,11 +186,11 @@ test "Invalid options return an expected error" {
     try testOptionsValidate(.{ .separator = .{ .fixed = '`' } }, GenerationOptions.Error.SeparatorIsDisallowedCharacter);
 }
 
-pub const Preset = union(enum) {
+pub const Preset = enum {
     master,
-    simple,
+    pascal,
     pin,
-    extreme,
+    super,
 
     pub fn options(self: @This()) GenerationOptions {
         return switch (self) {
@@ -187,15 +198,16 @@ pub const Preset = union(enum) {
                 .word_count = 8,
                 .separator = .mix,
             },
-            .simple => .{
-                .word_count = 6,
-                .separator = .{ .fixed = '-' },
+            .pascal => .{
+                .word_count = 4,
+                .separator = .none,
+                .capitalize = .initial,
             },
             .pin => .{
                 .word_count = 4,
                 .separator = .digit,
             },
-            .extreme => .{
+            .super => .{
                 .word_count = 14,
                 .separator = .mix,
             },
@@ -204,9 +216,9 @@ pub const Preset = union(enum) {
 
     pub const keywords = std.StaticStringMap(Preset).initComptime(.{
         .{ "master", .master },
-        .{ "simple", .simple },
+        .{ "pascal", .pascal },
         .{ "pin", .pin },
-        .{ "extreme", .extreme },
+        .{ "super", .super },
     });
 };
 
@@ -219,7 +231,71 @@ fn testPreset(preset: Preset, expected: GenerationOptions) !void {
 
 test "Preset.options()" {
     try testPreset(.master, .{ .word_count = 8, .separator = .mix });
-    try testPreset(.simple, .{ .word_count = 6, .separator = .{ .fixed = '-' } });
+    try testPreset(.pascal, .{ .word_count = 4, .separator = .none });
     try testPreset(.pin, .{ .word_count = 4, .separator = .digit });
-    try testPreset(.extreme, .{ .word_count = 14, .separator = .mix });
+    try testPreset(.super, .{ .word_count = 14, .separator = .mix });
+}
+
+pub const CapitalizeStrategy = enum {
+    initial,
+    random,
+    all,
+    none,
+
+    pub fn apply(
+        self: @This(),
+        rng: Random,
+        word: []const u8,
+        buffer: []u8,
+    ) []const u8 {
+        assert(buffer.len >= word.len);
+
+        switch (self) {
+            .initial => {
+                @memcpy(buffer[0..word.len], word);
+                if (word.len > 0) buffer[0] = ascii.toUpper(word[0]);
+            },
+            .all => {
+                for (word, 0..) |char, i| buffer[i] = ascii.toUpper(char);
+            },
+            .random => {
+                for (word, 0..) |char, i| {
+                    buffer[i] = if (rng.boolean()) ascii.toUpper(char) else char;
+                }
+            },
+            .none => {
+                @memcpy(buffer[0..word.len], word);
+            },
+        }
+
+        return buffer[0..word.len];
+    }
+
+    // Does not accept `none` as an option value from user input.
+    pub const keywords = std.StaticStringMap(CapitalizeStrategy).initComptime(.{
+        .{ "initial", .initial },
+        .{ "random", .random },
+        .{ "all", .all },
+    });
+};
+
+fn testCapitalize(
+    strategy: CapitalizeStrategy,
+    word: []const u8,
+    expected: []const u8,
+) !void {
+    var prng = Random.DefaultPrng.init(0);
+    const random = prng.random();
+
+    var buffer: [10]u8 = undefined;
+
+    const result = strategy.apply(random, word, &buffer);
+    try std.testing.expectEqualStrings(expected, result);
+}
+
+test "capitalize" {
+    try testCapitalize(.all, "japan", "JAPAN");
+    try testCapitalize(.initial, "russia", "Russia");
+    try testCapitalize(.random, "kenya", "KEnya");
+    try testCapitalize(.none, "chili", "chili");
 }

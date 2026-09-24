@@ -11,6 +11,8 @@ const help = (
     \\
     \\Usage: phragen [OPTIONS]
     \\
+    \\By default, generates a single passphrase with 6 words and 77 bits of entropy
+    \\
     \\Options:
     \\  -v, --version             Print version and exit
     \\  -h, --help                Print this help and exit
@@ -28,13 +30,12 @@ const help = (
     \\                                initial  Capitalize an initial character of each word
     \\                                random   Capitalize random characters
     \\                                all      Capitalize all characters
-    \\  -p, --preset <value>      Preset suited to a given purpose. When an option is passed explicitly,
-    \\                            it takes precedence
+    \\  -p, --preset <value>      Preset suited to a given purpose. When an option is passed explicitly, it takes precedence
     \\                              Supported values:
-    \\                                master   High-entropy passphrase for critical accounts (8 words, 137 bits)
-    \\                                simple   Memorable and typable passphrase for everyday use (6 words, 77 bits)
-    \\                                pin      Weak alphanumeric passphrase for PIN-like use cases (4 words, 61 bits)
-    \\                                extreme  Extremely high-entropy passphrase, not meant to be memorized (14 words, 244 bits)
+    \\                                master  High-entropy passphrase for critical accounts (8 words, 137 bits)
+    \\                                pin     Alphanumeric passphrase for PIN-like use cases (4 words, 61 bits)
+    \\                                pascal  Non-separator pascal case passphrase for everyday use (4 words, 51 bits)
+    \\                                super   Extremely high-entropy passphrase, not meant to be memorized (14 words, 244 bits)
     \\  --show-entropy            Calculate and print entropy of the passphrase
     \\
 );

@@ -188,9 +188,9 @@ test "Invalid options return an expected error" {
 
 pub const Preset = enum {
     master,
-    simple,
+    pascal,
     pin,
-    extreme,
+    super,
 
     pub fn options(self: @This()) GenerationOptions {
         return switch (self) {
@@ -198,15 +198,16 @@ pub const Preset = enum {
                 .word_count = 8,
                 .separator = .mix,
             },
-            .simple => .{
-                .word_count = 6,
-                .separator = .{ .fixed = '-' },
+            .pascal => .{
+                .word_count = 4,
+                .separator = .none,
+                .capitalize = .initial,
             },
             .pin => .{
                 .word_count = 4,
                 .separator = .digit,
             },
-            .extreme => .{
+            .super => .{
                 .word_count = 14,
                 .separator = .mix,
             },
@@ -215,9 +216,9 @@ pub const Preset = enum {
 
     pub const keywords = std.StaticStringMap(Preset).initComptime(.{
         .{ "master", .master },
-        .{ "simple", .simple },
+        .{ "pascal", .pascal },
         .{ "pin", .pin },
-        .{ "extreme", .extreme },
+        .{ "super", .super },
     });
 };
 
@@ -230,9 +231,9 @@ fn testPreset(preset: Preset, expected: GenerationOptions) !void {
 
 test "Preset.options()" {
     try testPreset(.master, .{ .word_count = 8, .separator = .mix });
-    try testPreset(.simple, .{ .word_count = 6, .separator = .{ .fixed = '-' } });
+    try testPreset(.pascal, .{ .word_count = 4, .separator = .none });
     try testPreset(.pin, .{ .word_count = 4, .separator = .digit });
-    try testPreset(.extreme, .{ .word_count = 14, .separator = .mix });
+    try testPreset(.super, .{ .word_count = 14, .separator = .mix });
 }
 
 pub const CapitalizeStrategy = enum {

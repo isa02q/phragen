@@ -38,9 +38,25 @@ pub fn run(
 
     if (args.show_entropy) {
         const result = @import("entropy.zig").calculateEntropy(args.options, wordlist.wordlist.len);
+
+        const annotation = blk: {
+            const includes_separator_randomness = args.options.separator != .fixed and args.options.separator != .none;
+            const excludes_uppercase_randomness = args.options.capitalize == .random;
+
+            if (includes_separator_randomness and excludes_uppercase_randomness) {
+                break :blk " (includes separator randomness, excludes uppercase randomness)";
+            } else if (includes_separator_randomness) {
+                break :blk " (includes separator randomness)";
+            } else if (excludes_uppercase_randomness) {
+                break :blk " (excludes uppercase randomness)";
+            } else {
+                break :blk "";
+            }
+        };
+
         try stdout.print(
-            "A {d}-word passphrase has {d:.3} bits of entropy (includes separator randomness)\n\n",
-            .{ args.options.word_count, result },
+            "Generated passphrase(s) has {d:.3} bits of entropy{s}\n\n",
+            .{ result, annotation },
         );
     }
 

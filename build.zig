@@ -2,8 +2,8 @@ const std = @import("std");
 const manifest = @import("build.zig.zon");
 
 pub fn build(b: *std.Build) !void {
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    const default_target = b.standardTargetOptions(.{});
+    const default_optimize = b.standardOptimizeOption(.{});
     const phragen_version: std.SemanticVersion = try .parse(manifest.version);
 
     const options = b.addOptions();
@@ -13,8 +13,8 @@ pub fn build(b: *std.Build) !void {
         .name = "phragen",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
+            .target = default_target,
+            .optimize = default_optimize,
         }),
         .version = phragen_version,
     });
@@ -33,8 +33,8 @@ pub fn build(b: *std.Build) !void {
     const test_exe = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
+            .target = default_target,
+            .optimize = default_optimize,
         }),
         .filters = if (b.args) |args| args else &.{},
     });
@@ -46,15 +46,15 @@ pub fn build(b: *std.Build) !void {
 
     const target_all = b.option(bool, "target-all", "Build for all supported targets") orelse false;
     const targets: []const std.Target.Query =
-        if (target_all) release_targets else &.{target.query};
+        if (target_all) release_targets else &.{default_target.query};
 
-    for (targets) |t| {
-        const release_exe_name = try std.fmt.allocPrint(b.allocator, "phragen-{s}", .{try t.zigTriple(b.allocator)});
+    for (targets) |target| {
+        const release_exe_name = try std.fmt.allocPrint(b.allocator, "phragen-{s}", .{try target.zigTriple(b.allocator)});
         const release_exe = b.addExecutable(.{
             .name = release_exe_name,
             .root_module = b.createModule(.{
                 .root_source_file = b.path("src/main.zig"),
-                .target = b.resolveTargetQuery(t),
+                .target = b.resolveTargetQuery(target),
                 .optimize = .ReleaseSafe,
             }),
             .version = phragen_version,
@@ -75,9 +75,13 @@ pub fn build(b: *std.Build) !void {
 
 const release_targets: []const std.Target.Query = &.{
     .{ .cpu_arch = .aarch64, .os_tag = .linux, .abi = .gnu },
+    .{ .cpu_arch = .aarch64, .os_tag = .linux, .abi = .musl },
     .{ .cpu_arch = .aarch64, .os_tag = .macos },
     .{ .cpu_arch = .aarch64, .os_tag = .windows },
+    .{ .cpu_arch = .aarch64, .os_tag = .freebsd },
     .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
+    .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .musl },
     .{ .cpu_arch = .x86_64, .os_tag = .macos },
     .{ .cpu_arch = .x86_64, .os_tag = .windows },
+    .{ .cpu_arch = .x86_64, .os_tag = .freebsd },
 };

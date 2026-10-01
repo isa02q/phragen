@@ -37,7 +37,7 @@ pub fn run(
     defer stdout.flush() catch {};
 
     if (args.show_entropy) {
-        const result = @import("entropy.zig").calculateEntropy(args.options, wordlist.wordlist.len);
+        const result = @import("entropy.zig").calculateEntropy(args.options, wordlist.entry_count);
 
         const annotation = blk: {
             const includes_separator_randomness = args.options.separator != .fixed and args.options.separator != .none;

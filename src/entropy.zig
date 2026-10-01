@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const wordlist = @import("wordlist.zig");
 const passphrase = @import("passphrase.zig");
 
 pub fn calculateEntropy(opt: passphrase.GenerationOptions, wordlist_entry_count: usize) f64 {
@@ -21,7 +22,7 @@ pub fn calculateEntropy(opt: passphrase.GenerationOptions, wordlist_entry_count:
 }
 
 fn testCalculateEntropy(opt: passphrase.GenerationOptions, expected: f64) !void {
-    const entropy = calculateEntropy(opt, @import("wordlist.zig").wordlist.len);
+    const entropy = calculateEntropy(opt, wordlist.entry_count);
     try std.testing.expectApproxEqAbs(@as(f64, expected), entropy, 0.01);
 }
 

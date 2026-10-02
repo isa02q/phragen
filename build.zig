@@ -56,6 +56,7 @@ pub fn build(b: *std.Build) !void {
                 .root_source_file = b.path("src/main.zig"),
                 .target = b.resolveTargetQuery(target),
                 .optimize = .ReleaseSafe,
+                .strip = true,
             }),
             .version = phragen_version,
         });

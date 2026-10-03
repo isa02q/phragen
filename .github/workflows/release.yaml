@@ -68,7 +68,7 @@ jobs:
 
             cosign verify-blob "${file}" \
               --bundle "${file}.sigstore.json" \
-              --certificate-identity="${REPO_URL}/.github/workflows/release.yaml@refs/heads/main" \
+              --certificate-identity="${REPO_URL}/.github/workflows/release.yaml@${GITHUB_REF}" \
               --certificate-oidc-issuer=https://token.actions.githubusercontent.com
           done
 

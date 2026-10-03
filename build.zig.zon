@@ -2,6 +2,6 @@
     .name = .phragen,
     .version = "0.4.0",
     .fingerprint = 0x6a33afb3fd10fe61, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     .paths = .{ "build.zig", "build.zig.zon", "src" },
 }

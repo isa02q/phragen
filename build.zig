@@ -24,19 +24,20 @@ pub fn build(b: *std.Build) !void {
 
     const run_step = b.step("run", "Run the application");
     const run_app = b.addRunArtifact(exe);
-    if (b.args) |args| {
-        run_app.addArgs(args);
-    }
+    run_app.addPassthruArgs();
     run_step.dependOn(&run_app.step);
 
     const test_step = b.step("test", "Run tests");
+
+    const test_filter = b.option([]const []const u8, "test-filter", "Filter tests to run");
+
     const test_exe = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = default_target,
             .optimize = default_optimize,
         }),
-        .filters = if (b.args) |args| args else &.{},
+        .filters = test_filter orelse &.{},
     });
 
     const run_tests = b.addRunArtifact(test_exe);

@@ -34,10 +34,10 @@ const help = (
     \\                              Supported values:
     \\                                master  High-entropy passphrase for critical accounts (8 words, 137 bits)
     \\                                pin     Alphanumeric passphrase for PIN-like use cases (4 words, 61 bits)
-    \\                                pascal  Non-separator pascal case passphrase for everyday use (4 words, 51 bits)
+    \\                                pascal  PascalCase passphrase without separators for everyday use (4 words, 51 bits)
     \\                                super   Extremely high-entropy passphrase, not meant to be memorized (14 words, 244 bits)
-    \\  --show-entropy            Calculate and print entropy of the passphrase. The entropy includes separator randomness,
-    \\                            but ignores uppercase randomness
+    \\  --show-entropy            Calculate and print the entropy of the passphrase. The result includes the randomness of
+    \\                            separators, but not of capitalization
     \\
 );
 

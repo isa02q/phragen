@@ -18,7 +18,7 @@ mise use --global github:isa02q/phragen
 ### via Scoop
 
 ```bash
-scoop install https://raw.githubusercontent.com/isa02q/phragen/raw/refs/heads/main/scoop-manifest.json
+scoop install https://raw.githubusercontent.com/isa02q/phragen/refs/heads/main/phragen.json
 ```
 
 ### build from source

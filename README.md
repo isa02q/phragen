@@ -15,6 +15,12 @@ The wordlist is the [EFF's Large Wordlist](https://www.eff.org/files/2016/07/18/
 mise use --global github:isa02q/phragen
 ```
 
+### via Scoop
+
+```bash
+scoop install https://raw.githubusercontent.com/isa02q/phragen/raw/refs/heads/main/scoop-manifest.json
+```
+
 ### build from source
 
 Zig 0.17.0 is required.

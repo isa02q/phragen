@@ -45,12 +45,13 @@ pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const allocator = init.arena.allocator();
 
-    const args = cli.parseArgs(init.minimal.args, allocator) catch |err| {
+    var error_arg: []const u8 = undefined;
+    const args = cli.parseArgs(init.minimal.args, allocator, &error_arg) catch |err| {
         switch (err) {
-            error.MissingValue => fatal("A required value is missing for one of the options", .{}),
-            error.InvalidValue => fatal("A value for one of the options is invalid", .{}),
-            error.InvalidOption => fatal("One of the options is invalid", .{}),
-            error.UnexpectedArgument => fatal("A positional argument is unexpected", .{}),
+            error.MissingValue => fatal("Option `{s}` requires a value but none was supplied", .{error_arg}),
+            error.InvalidValue => fatal("Invalid value for `{s}`", .{error_arg}),
+            error.InvalidOption => fatal("Unknown option `{s}`", .{error_arg}),
+            error.UnexpectedArgument => fatal("Unexpected argument `{s}`", .{error_arg}),
             else => return err,
         }
     };

@@ -67,7 +67,11 @@ pub fn run(
 
 const RunError = Allocator.Error || std.Io.Writer.Error;
 
-pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
+pub fn parseArgs(
+    args: Args,
+    allocator: Allocator,
+    current_arg: *[]const u8, // Used by the caller on error
+) ParseArgsError!CliArgs {
     var args_it = try Args.iterateAllocator(args, allocator);
     defer args_it.deinit();
 
@@ -84,6 +88,8 @@ pub fn parseArgs(args: Args, allocator: Allocator) ParseArgsError!CliArgs {
 
     const memeq = std.mem.eql;
     while (args_it.next()) |arg| {
+        current_arg.* = arg;
+
         if (memeq(u8, arg, "--version") or memeq(u8, arg, "-v")) {
             cli_args.version = true;
             break;

@@ -45,8 +45,10 @@ pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const allocator = init.arena.allocator();
 
+    const args = try init.minimal.args.toSlice(allocator);
     var error_arg: []const u8 = undefined;
-    const args = cli.parseArgs(init.minimal.args, allocator, &error_arg) catch |err| {
+
+    const cli_args = cli.parseArgs(args, &error_arg) catch |err| {
         switch (err) {
             error.MissingValue => fatal("Option `{s}` requires a value but none was supplied", .{error_arg}),
             error.InvalidValue => fatal("Invalid value for `{s}`", .{error_arg}),
@@ -58,19 +60,19 @@ pub fn main(init: std.process.Init) !void {
 
     // Handle early exit flags.
     {
-        if (args.version) {
+        if (cli_args.version) {
             const version = std.fmt.comptimePrint("{f}\n", .{@import("build_options").version});
             try std.Io.File.stdout().writeStreamingAll(io, version);
             std.process.exit(0);
         }
 
-        if (args.help) {
+        if (cli_args.help) {
             try std.Io.File.stdout().writeStreamingAll(io, help);
             std.process.exit(0);
         }
     }
 
-    args.options.validate() catch |err| {
+    cli_args.options.validate() catch |err| {
         switch (err) {
             error.WordCountBelowMinimum => fatal("A passphrase must contain at least 4 words for security reasons", .{}),
             error.SeparatorIsDisallowedCharacter => fatal("The specified character is not allowed as a separator", .{}),
@@ -78,7 +80,7 @@ pub fn main(init: std.process.Init) !void {
     };
 
     // Run the actual passphrase generation logic.
-    try cli.run(io, allocator, args);
+    try cli.run(io, allocator, cli_args);
 }
 
 test {

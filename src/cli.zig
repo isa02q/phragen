@@ -3,7 +3,6 @@ const std = @import("std");
 const passphrase = @import("passphrase.zig");
 const wordlist = @import("wordlist.zig");
 
-const Args = std.process.Args;
 const Allocator = std.mem.Allocator;
 
 pub fn run(
@@ -68,16 +67,9 @@ pub fn run(
 const RunError = Allocator.Error || std.Io.Writer.Error;
 
 pub fn parseArgs(
-    args: Args,
-    allocator: Allocator,
+    args: []const []const u8,
     current_arg: *[]const u8, // Used by the caller on error
 ) ParseArgsError!CliArgs {
-    var args_it = try Args.iterateAllocator(args, allocator);
-    defer args_it.deinit();
-
-    // `std.process.Args` holds program name as the first entry.
-    _ = args_it.next();
-
     var cli_args: CliArgs = .{};
 
     var is_set = struct {
@@ -87,7 +79,9 @@ pub fn parseArgs(
     }{};
 
     const memeq = std.mem.eql;
-    while (args_it.next()) |arg| {
+    var i: usize = 1;
+    while (i < args.len) : (i += 1) {
+        const arg = args[i];
         current_arg.* = arg;
 
         if (memeq(u8, arg, "--version") or memeq(u8, arg, "-v")) {
@@ -97,16 +91,22 @@ pub fn parseArgs(
             cli_args.help = true;
             break;
         } else if (memeq(u8, arg, "--count") or memeq(u8, arg, "-c")) {
-            const passphrase_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            i += 1;
+            const passphrase_count_str = args[i];
             const passphrase_count = std.fmt.parseInt(usize, passphrase_count_str, 10) catch return ParseArgsError.InvalidValue;
             if (passphrase_count == 0) return ParseArgsError.InvalidValue;
             cli_args.passphrase_count = passphrase_count;
         } else if (memeq(u8, arg, "--words") or memeq(u8, arg, "-w")) {
-            const word_count_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            i += 1;
+            const word_count_str = args[i];
             cli_args.options.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
             is_set.word_count = true;
         } else if (memeq(u8, arg, "--separator") or memeq(u8, arg, "-s")) {
-            const separator_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            i += 1;
+            const separator_str = args[i];
             if (separator_str.len == 1) {
                 cli_args.options.separator = .{ .fixed = separator_str[0] };
             } else if (passphrase.Separator.keywords.get(separator_str)) |value| {
@@ -116,7 +116,9 @@ pub fn parseArgs(
             }
             is_set.separator = true;
         } else if (memeq(u8, arg, "--preset") or memeq(u8, arg, "-p")) {
-            const preset_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            i += 1;
+            const preset_str = args[i];
             if (passphrase.Preset.keywords.get(preset_str)) |value| {
                 const opt = value.options();
                 if (!is_set.word_count) cli_args.options.word_count = opt.word_count;
@@ -126,7 +128,9 @@ pub fn parseArgs(
                 return ParseArgsError.InvalidValue;
             }
         } else if (memeq(u8, arg, "--capitalize") or memeq(u8, arg, "-C")) {
-            const capitalize_str = args_it.next() orelse return ParseArgsError.MissingValue;
+            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            i += 1;
+            const capitalize_str = args[i];
             if (passphrase.CapitalizeStrategy.keywords.get(capitalize_str)) |value| {
                 cli_args.options.capitalize = value;
                 is_set.capitalize = true;
@@ -158,14 +162,14 @@ const ParseArgsError = error{
     InvalidValue,
     InvalidOption,
     UnexpectedArgument,
-} || Args.ToSliceError;
+} || std.process.Args.ToSliceError;
 
 fn testParseArgs(
-    cmd: []const [*:0]const u8,
+    args: []const []const u8,
     expected: CliArgs,
 ) !void {
-    const args: Args = .{ .vector = cmd };
-    const cli_args = parseArgs(args, std.testing.allocator);
+    var error_arg: []const u8 = undefined;
+    const cli_args = parseArgs(args, &error_arg);
 
     try std.testing.expectEqual(expected, cli_args);
 }
@@ -184,11 +188,11 @@ test "Valid args are parsed correctly" {
 }
 
 fn testParseArgsError(
-    cmd: []const [*:0]const u8,
+    args: []const []const u8,
     expected: ParseArgsError,
 ) !void {
-    const args: Args = .{ .vector = cmd };
-    const result = parseArgs(args, std.testing.allocator);
+    var error_arg: []const u8 = undefined;
+    const result = parseArgs(args, &error_arg);
 
     try std.testing.expectError(expected, result);
 }

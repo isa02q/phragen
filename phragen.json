@@ -1,17 +1,17 @@
 {
   "$schema": "https://raw.githubusercontent.com/ScoopInstaller/scoop/refs/heads/master/schema.json",
-  "version": "v0.4.1",
+  "version": "0.4.2",
   "description": "Configurable passphrase generator for CLI",
   "homepage": "https://github.com/isa02q/phragen",
   "license": "BSD-2-Clause",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/isa02q/phragen/releases/download/v0.4.1/phragen-x86_64-windows.exe#/phragen.exe",
-      "hash": "sha256:bae688a113c1715ac969c2aa97b1fbb4dfce6a8c6405faabb546b9b2e3030734"
+      "url": "https://github.com/isa02q/phragen/releases/download/v0.4.2/phragen-x86_64-windows.exe#/phragen.exe",
+      "hash": "sha256:a82a0486f78a5af9e257bb87eab727f6d58b36d6ca81deea857709a7f2741ce7"
     },
     "arm64": {
-      "url": "https://github.com/isa02q/phragen/releases/download/v0.4.1/phragen-aarch64-windows.exe#/phragen.exe",
-      "hash": "sha256:e55b15e9e9bff824df8434880ef2b5b55301c3fc7790a4558d0874fb7f20c158"
+      "url": "https://github.com/isa02q/phragen/releases/download/v0.4.2/phragen-aarch64-windows.exe#/phragen.exe",
+      "hash": "sha256:9f645ca11acc71e747e908ae3c90ec1ad8be7e25f7201b1f9dfc679c01010c14"
     }
   },
   "bin": "phragen.exe",

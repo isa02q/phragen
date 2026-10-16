@@ -7,6 +7,8 @@ Phragen generates random passphrases in the Diceware style.
 It uses an engine ([`std.Random`](https://ziglang.org/documentation/master/std/#std.Random)) as a CSPRNG, seeded from an OS-provided I/O source ([`std.process.Init.io`](https://ziglang.org/documentation/master/std/#std.process.Init)).
 The wordlist is the [EFF's Large Wordlist](https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt) (7,776 words), which gives 12.9 bits of entropy per word.
 
+This repository tracks the [Zig master branch](https://codeberg.org/ziglang/zig/src/branch/master).
+
 ## Installation
 
 ### via mise GitHub backend
@@ -22,8 +24,6 @@ scoop install https://raw.githubusercontent.com/isa02q/phragen/refs/heads/main/p
 ```
 
 ### build from source
-
-Zig 0.17.0 is required.
 
 You can change the optimization strategy and the build target. Run `zig build --help` for details.
 

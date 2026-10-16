@@ -1,7 +1,7 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tools]
-zig = "0.17.0"
+zig = "master"
 
 [tasks.build]
 description = "Build"

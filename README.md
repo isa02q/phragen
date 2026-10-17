@@ -1,13 +1,13 @@
 # Phragen
 
-Phragen is a configurable passphrase generator for the CLI.
-It is a Zig port of a similar Go tool I used personally, with some added features.
+Phragen is a configurable passphrase generator for CLI.
+It is a Zig port of a similar Go tool I used personally, with several additional features.
 
 Phragen generates random passphrases in the Diceware style.
-It uses [`std.Random`](https://ziglang.org/documentation/master/std/#std.Random) as a CSPRNG engine, seeded from an I/O source provided by the OS ([`std.process.Init.io`](https://ziglang.org/documentation/master/std/#std.process.Init)).
+It uses [`std.Random`](https://ziglang.org/documentation/master/std/#std.Random) as a CSPRNG engine, seeded from an OS-provided I/O source ([`std.process.Init.io`](https://ziglang.org/documentation/master/std/#std.process.Init)).
 The wordlist is the [EFF's Large Wordlist](https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt) (7,776 words), which provides 12.9 bits of entropy per word.
 
-This repository loosely tracks the [Zig master branch](https://codeberg.org/ziglang/zig/src/branch/master).
+This project loosely tracks the [Zig master branch](https://codeberg.org/ziglang/zig/src/branch/master).
 
 ## Installation
 
@@ -25,21 +25,21 @@ scoop install https://raw.githubusercontent.com/isa02q/phragen/refs/heads/main/p
 
 ### Build from source
 
-This project is built against a Zig's nightly build, which often diverges from the actual Zig master branch.
+Phragen is built against a Zig nightly build, which often diverges from the actual Zig master branch.
 A recent stable release will most likely build the project as well.
 You can also run the build command via [`mise exec`](https://mise.jdx.dev/cli/exec.html) to use exact version of Zig used for the release build without installing it.
 
-If you want to change the optimization strategy or the target, run `zig build --help`.
+If you want to change the optimization strategy or the target, run `zig build -- help`.
 
 ```bash
 git clone https://github.com/isa02q/phragen.git
 cd phragen/
 
-# build the release binary in `ReleaseSafe` mode
+# build the release binary for your native in `ReleaseSafe` mode
 # the binary is installed to `zig-out/release/`
 zig build release --summary all
 
-# build the debug binary
+# build the debug binary for your native
 # the binary is installed to `zig-out/bin/`
 zig build --summary all
 ```
@@ -87,11 +87,29 @@ Options:
 
 ## Notes
 
+### Verify the binary signature
+
+The release binaries signed with [Cosign](https://github.com/sigstore/cosign) by GitHub Actions.
+Each release asset ships with a `.sigstore.json` bundle, so you can confirm that a binary was actually built by this repository's workflow on the given tag.
+
+```bash
+binary=<path-to-binary>
+bundle=<path-to-bundle>
+tag=<release-tag-you-downloaded>
+
+cosign verify-blob "${binary}" \
+  --bundle "${bundle}" \
+  --certificate-identity="https://github.com/isa02q/phragen/.github/workflows/release.yaml@refs/tags/${tag}" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+```
+
+`cosign verify-blob` prints `Verified OK` when the signature is valid.
+
 ### Instant generation from the dialog (for Windows)
 
 [`generate-and-copy.bat`](./generate-and-copy.bat) copies a generated passphrase to the clipboard, allowing you to generate and paste one without opening a terminal.
 
-Follow these two steps to use it directly from the dialog launched with pressing `Win`+`R`.
+Follow these two steps to use it directly from the dialog launched by pressing `Win`+`R`.
 
 1. Make sure `phragen.exe` is on your `PATH` or edit the file to specify the absolute path to `phragen.exe`.
 2. Place the script in a directory included in your `PATH`, using any filename you like (a short one is preferable).

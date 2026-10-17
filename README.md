@@ -85,6 +85,41 @@ Options:
 
 ```
 
+### Examples
+
+```txt
+$ phragen
+saga.phantom.tapestry.wages.seldom.fragrant
+
+# generate multiple passphrases
+$ phragen --count 3
+march.answering.stargazer.petticoat.puritan.dismiss
+encourage.reseller.kilobyte.outdoors.hypnotize.shawl
+defy.exodus.overvalue.hardiness.revoke.chapter
+
+# generate long passphrase and print its entropy
+$ phragen --words 10 --show-entropy
+Generated passphrase(s) has 129.248 bits of entropy
+
+smugly.uptake.clatter.drinking.factsheet.twig.darling.anthology.abacus.barbell
+
+# use random digit as separators
+$ phragen --separator digit --words 5
+thrift9mandarin3spirits1thrash7rebate
+
+# disable separators and capitalize initial character
+$ phragen --separator none --capitalize initial
+StewExplainOutrightRailway
+
+# use preset
+$ phragen --preset master
+qualm2eggnog:nintendo-prognosis;skillet;marina7twistable?obtuse
+
+# override preset
+$ phragen --preset pascal --separator _ --words 6
+Emu_Rants_Umbilical_Overripe_Consumer_Platypus
+```
+
 ## Notes
 
 ### Verify the binary signature

@@ -1,13 +1,13 @@
 # Phragen
 
-Phragen is a configurable passphrase generator for CLI.
+Phragen is a configurable passphrase generator for the CLI.
 It is a Zig port of a similar Go tool I used personally, with some added features.
 
 Phragen generates random passphrases in the Diceware style.
-It uses an engine ([`std.Random`](https://ziglang.org/documentation/master/std/#std.Random)) as a CSPRNG, seeded from an OS-provided I/O source ([`std.process.Init.io`](https://ziglang.org/documentation/master/std/#std.process.Init)).
-The wordlist is the [EFF's Large Wordlist](https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt) (7,776 words), which gives 12.9 bits of entropy per word.
+It uses [`std.Random`](https://ziglang.org/documentation/master/std/#std.Random) as a CSPRNG engine, seeded from an I/O source provided by the OS ([`std.process.Init.io`](https://ziglang.org/documentation/master/std/#std.process.Init)).
+The wordlist is the [EFF's Large Wordlist](https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt) (7,776 words), which provides 12.9 bits of entropy per word.
 
-This repository tracks the [Zig master branch](https://codeberg.org/ziglang/zig/src/branch/master).
+This repository loosely tracks the [Zig master branch](https://codeberg.org/ziglang/zig/src/branch/master).
 
 ## Installation
 
@@ -25,7 +25,11 @@ scoop install https://raw.githubusercontent.com/isa02q/phragen/refs/heads/main/p
 
 ### build from source
 
-You can change the optimization strategy and the build target. Run `zig build --help` for details.
+This project is built against a Zig's nightly build, which often diverges from the actual Zig master branch.
+A recent stable release will most likely build the project as well.
+You can also run the build command via [`mise exec`](https://mise.jdx.dev/cli/exec.html) to use exact version of Zig used for the release build without installing it.
+
+If you want to change the optimization strategy or the target, run `zig build --help`.
 
 ```bash
 git clone https://github.com/isa02q/phragen.git
@@ -39,6 +43,10 @@ zig build release --summary all
 # the binary is installed to `zig-out/bin/`
 zig build --summary all
 ```
+
+### download from Releases page
+
+Download a binary compatible with your OS and CPU from [GitHub Releases](https://github.com/isa02q/phragen/releases/latest).
 
 ## Usage
 

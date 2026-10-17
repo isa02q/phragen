@@ -23,7 +23,7 @@ mise use --global github:isa02q/phragen
 scoop install https://raw.githubusercontent.com/isa02q/phragen/refs/heads/main/phragen.json
 ```
 
-### build from source
+### Build from source
 
 This project is built against a Zig's nightly build, which often diverges from the actual Zig master branch.
 A recent stable release will most likely build the project as well.
@@ -44,7 +44,7 @@ zig build release --summary all
 zig build --summary all
 ```
 
-### download from Releases page
+### Download from Releases page
 
 Download a binary compatible with your OS and CPU from [GitHub Releases](https://github.com/isa02q/phragen/releases/latest).
 
@@ -84,6 +84,17 @@ Options:
                             separators, but not of capitalization
 
 ```
+
+## Notes
+
+### Instant generation from the dialog (for Windows)
+
+[`generate-and-copy.bat`](./generate-and-copy.bat) copies a generated passphrase to the clipboard, allowing you to generate and paste one without opening a terminal.
+
+Follow these two steps to use it directly from the dialog launched with pressing `Win`+`R`.
+
+1. Make sure `phragen.exe` is on your `PATH` or edit the file to specify the absolute path to `phragen.exe`.
+2. Place the script in a directory included in your `PATH`, using any filename you like (a short one is preferable).
 
 ## Licensing
 

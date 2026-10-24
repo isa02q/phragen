@@ -3,27 +3,29 @@
 lockfile_version = 3
 
 [[tools.zig]]
-version = "0.18.0-dev.253+16d31ceed"
+version = "0.18.0-dev.470+6817928c3"
 backend = "core:zig"
 specifiers = ["master"]
 
 [tools.zig."platforms.linux-arm64"]
-url = "https://ziglang.org/builds/zig-aarch64-linux-0.18.0-dev.253+16d31ceed.tar.xz"
+url = "https://ziglang.org/builds/zig-aarch64-linux-0.18.0-dev.470+6817928c3.tar.xz"
 
 [tools.zig."platforms.linux-arm64-musl"]
-url = "https://ziglang.org/builds/zig-aarch64-linux-0.18.0-dev.253+16d31ceed.tar.xz"
+url = "https://ziglang.org/builds/zig-aarch64-linux-0.18.0-dev.470+6817928c3.tar.xz"
 
 [tools.zig."platforms.linux-x64"]
-url = "https://ziglang.org/builds/zig-x86_64-linux-0.18.0-dev.253+16d31ceed.tar.xz"
+checksum = "blake3:58efe213f215ffc810a9b2754fd16ab5aa49c93b3d3d46ada545b2ca06b538bf"
+url = "https://ziglang.org/builds/zig-x86_64-linux-0.18.0-dev.470+6817928c3.tar.xz"
+provenance = "minisign"
 
 [tools.zig."platforms.linux-x64-musl"]
-url = "https://ziglang.org/builds/zig-x86_64-linux-0.18.0-dev.253+16d31ceed.tar.xz"
+url = "https://ziglang.org/builds/zig-x86_64-linux-0.18.0-dev.470+6817928c3.tar.xz"
 
 [tools.zig."platforms.macos-arm64"]
-url = "https://ziglang.org/builds/zig-aarch64-macos-0.18.0-dev.253+16d31ceed.tar.xz"
+url = "https://ziglang.org/builds/zig-aarch64-macos-0.18.0-dev.470+6817928c3.tar.xz"
 
 [tools.zig."platforms.macos-x64"]
-url = "https://ziglang.org/builds/zig-x86_64-macos-0.18.0-dev.253+16d31ceed.tar.xz"
+url = "https://ziglang.org/builds/zig-x86_64-macos-0.18.0-dev.470+6817928c3.tar.xz"
 
 [tools.zig."platforms.windows-x64"]
-url = "https://ziglang.org/builds/zig-x86_64-windows-0.18.0-dev.253+16d31ceed.zip"
+url = "https://ziglang.org/builds/zig-x86_64-windows-0.18.0-dev.470+6817928c3.zip"

@@ -63,7 +63,7 @@ pub fn build(b: *std.Build) !void {
                 .root_module = b.createModule(.{
                     .root_source_file = b.path("src/main.zig"),
                     .target = b.resolveTargetQuery(target),
-                    .optimize = .ReleaseSafe,
+                    .optimize = .safe,
                     .strip = true,
                 }),
                 .version = phragen_version,

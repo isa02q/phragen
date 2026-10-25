@@ -91,22 +91,19 @@ pub fn parseArgs(
             cli_args.help = true;
             break;
         } else if (memeq(u8, arg, "--count") or memeq(u8, arg, "-c")) {
-            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            const passphrase_count_str = peekValue(args, i) orelse return ParseArgsError.MissingValue;
             i += 1;
-            const passphrase_count_str = args[i];
             const passphrase_count = std.fmt.parseInt(usize, passphrase_count_str, 10) catch return ParseArgsError.InvalidValue;
             if (passphrase_count == 0) return ParseArgsError.InvalidValue;
             cli_args.passphrase_count = passphrase_count;
         } else if (memeq(u8, arg, "--words") or memeq(u8, arg, "-w")) {
-            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            const word_count_str = peekValue(args, i) orelse return ParseArgsError.MissingValue;
             i += 1;
-            const word_count_str = args[i];
             cli_args.options.word_count = std.fmt.parseInt(usize, word_count_str, 10) catch return ParseArgsError.InvalidValue;
             is_set.word_count = true;
         } else if (memeq(u8, arg, "--separator") or memeq(u8, arg, "-s")) {
-            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            const separator_str = peekValue(args, i) orelse return ParseArgsError.MissingValue;
             i += 1;
-            const separator_str = args[i];
             if (separator_str.len == 1) {
                 cli_args.options.separator = .{ .fixed = separator_str[0] };
             } else if (passphrase.Separator.keywords.get(separator_str)) |value| {
@@ -116,9 +113,8 @@ pub fn parseArgs(
             }
             is_set.separator = true;
         } else if (memeq(u8, arg, "--preset") or memeq(u8, arg, "-p")) {
-            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            const preset_str = peekValue(args, i) orelse return ParseArgsError.MissingValue;
             i += 1;
-            const preset_str = args[i];
             if (passphrase.Preset.keywords.get(preset_str)) |value| {
                 const opt = value.options();
                 if (!is_set.word_count) cli_args.options.word_count = opt.word_count;
@@ -128,9 +124,8 @@ pub fn parseArgs(
                 return ParseArgsError.InvalidValue;
             }
         } else if (memeq(u8, arg, "--capitalize") or memeq(u8, arg, "-C")) {
-            if (i + 1 >= args.len) return ParseArgsError.MissingValue;
+            const capitalize_str = peekValue(args, i) orelse return ParseArgsError.MissingValue;
             i += 1;
-            const capitalize_str = args[i];
             if (passphrase.CapitalizeStrategy.keywords.get(capitalize_str)) |value| {
                 cli_args.options.capitalize = value;
                 is_set.capitalize = true;
@@ -163,6 +158,10 @@ const ParseArgsError = error{
     InvalidOption,
     UnexpectedArgument,
 } || std.process.Args.ToSliceError;
+
+fn peekValue(args: []const []const u8, i: usize) ?[]const u8 {
+    return if (i + 1 < args.len) args[i + 1] else null;
+}
 
 fn testParseArgs(
     args: []const []const u8,

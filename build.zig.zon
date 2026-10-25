@@ -1,7 +1,7 @@
 // Phragen is not intended to used as a Zig package.
 .{
     .name = .phragen,
-    .version = "0.4.2",
+    .version = "0.4.4",
     .fingerprint = 0x6a33afb3fd10fe61, // Changing this has security and trust implications.
     .minimum_zig_version = "0.18.0-dev.470+6817928c3",
     .paths = .{""},

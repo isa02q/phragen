@@ -8,34 +8,37 @@ const ascii = std.ascii;
 const assert = std.debug.assert;
 
 pub fn generatePassphrase(
-    allocator: Allocator,
+    buffer: []u8,
     rng: Random,
     opt: GenerationOptions,
-) Allocator.Error![]u8 {
+) []u8 {
     assert(opt.word_count >= GenerationOptions.min_word_count);
+    assert(buffer.len >= getMaxLength(opt.word_count));
 
-    var list: std.ArrayList(u8) = .empty;
-    errdefer list.deinit(allocator);
-
+    var len: usize = 0;
     var word_buffer: [wordlist.max_word_length]u8 = undefined;
 
     // Pick the first word before the loop to avoid the per-iteration separator necessity check.
     const first_word_index = rng.uintLessThan(usize, wordlist.entry_count);
     const first_word = opt.capitalize.apply(rng, wordlist.dictionary[first_word_index], &word_buffer);
-    try list.appendSlice(allocator, first_word);
+    @memcpy(buffer[0..first_word.len], first_word);
+
+    len = first_word.len;
 
     for (1..opt.word_count) |_| {
         if (opt.separator.resolve(rng)) |separator| {
-            try list.append(allocator, separator);
+            buffer[len] = separator;
+            len += 1;
         }
 
         const index = rng.uintLessThan(usize, wordlist.entry_count);
         const word = opt.capitalize.apply(rng, wordlist.dictionary[index], &word_buffer);
+        @memcpy(buffer[len..][0..word.len], word);
 
-        try list.appendSlice(allocator, word);
+        len += word.len;
     }
 
-    return list.toOwnedSlice(allocator);
+    return buffer[0..len];
 }
 
 pub const GenerationOptions = struct {
@@ -63,6 +66,10 @@ pub const GenerationOptions = struct {
 
     const min_word_count = 4;
 };
+
+pub fn getMaxLength(word_count: usize) usize {
+    return word_count *| wordlist.max_word_length +| (word_count -| 1);
+}
 
 pub const Separator = union(enum) {
     fixed: u8,
@@ -104,8 +111,10 @@ fn testPassphraseWordCount(word_count: usize) !void {
 
     const allocator = std.testing.allocator;
 
-    const passphrase = try generatePassphrase(allocator, random, .{ .word_count = word_count });
-    defer allocator.free(passphrase);
+    const buffer = try allocator.alloc(u8, getMaxLength(word_count));
+    defer allocator.free(buffer);
+
+    const passphrase = generatePassphrase(buffer, random, .{ .word_count = word_count });
 
     var it = std.mem.splitScalar(u8, passphrase, '.');
     var count: usize = 0;
@@ -129,8 +138,10 @@ fn testGeneratePassphrase(opt: GenerationOptions) !void {
     const expect = std.testing.expect;
     const isAlphabetic = ascii.isAlphabetic;
 
-    const passphrase = try generatePassphrase(allocator, random, opt);
-    defer allocator.free(passphrase);
+    const buffer = try allocator.alloc(u8, getMaxLength(opt.word_count));
+    defer allocator.free(buffer);
+
+    const passphrase = generatePassphrase(buffer, random, opt);
 
     try expect(isAlphabetic(passphrase[0]));
     try expect(isAlphabetic(passphrase[passphrase.len - 1]));

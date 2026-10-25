@@ -13,25 +13,11 @@ pub fn run(
     const rng_impl: std.Random.IoSource = .{ .io = io };
     const rng = rng_impl.interface();
 
-    const passphrases = blk: {
-        var list: std.ArrayList([]u8) = .empty;
-        errdefer {
-            for (list.items) |item| allocator.free(item);
-            list.deinit(allocator);
-        }
+    const scratch = try allocator.alloc(u8, passphrase.getMaxLength(args.options.word_count));
+    defer allocator.free(scratch);
 
-        for (0..args.passphrase_count) |_| {
-            const result = try passphrase.generatePassphrase(allocator, rng, args.options);
-            try list.append(allocator, result);
-        }
-
-        break :blk try list.toOwnedSlice(allocator);
-    };
-
-    const buffer_size = // Enough size, including the separator, entropy printing and newline char.
-        (args.options.word_count * wordlist.max_word_length * args.passphrase_count) + args.passphrase_count + (args.options.word_count - 1) + 100;
-    const buffer = try allocator.alloc(u8, buffer_size);
-    var stdout_writer = std.Io.File.stdout().writer(io, buffer);
+    var buffer: [4096]u8 = undefined;
+    var stdout_writer = std.Io.File.stdout().writer(io, &buffer);
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
 
@@ -59,8 +45,9 @@ pub fn run(
         );
     }
 
-    for (passphrases) |item| {
-        try stdout.print("{s}\n", .{item});
+    for (0..args.passphrase_count) |_| {
+        const result = passphrase.generatePassphrase(scratch, rng, args.options);
+        try stdout.print("{s}\n", .{result});
     }
 }
 
